@@ -115,7 +115,7 @@ namespace TSVCEO.CloudPrint.Printing
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log(LogLevel.Info, "Job {0} in error", job.JobID);
+                    Logger.Log(LogLevel.Info, "Job {0} in error:\nException:\n{1}\n{2}", job.JobID, ex.Message, ex.ToString());
                     job.SetError(ex.GetType().Name, ex.Message);
                 }
             }

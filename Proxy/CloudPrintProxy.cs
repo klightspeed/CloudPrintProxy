@@ -293,7 +293,12 @@ namespace TSVCEO.CloudPrint.Proxy
                 {
                     _PrintJobs[job.JobID] = job;
                     PrintJobProcessor.AddJob(job);
-                    Logger.Log(LogLevel.Debug, "Received new print job {0} [{1}] for printer [{2}]", job.JobID, job.JobTitle, job.Printer.Name);
+                    Logger.Log(LogLevel.Info, "Received new print job {0} [{1}] for printer [{2}]", job.JobID, job.JobTitle, job.Printer.Name);
+                    if (job.Status == CloudPrintJobStatus.ERROR || job.Status == CloudPrintJobStatus.IN_PROGRESS)
+                    {
+                        job.SetStatus(CloudPrintJobStatus.QUEUED);
+                        Logger.Log(LogLevel.Info, "Restarting print job {0} [{1}] for printer [{2}]", job.JobID, job.JobTitle, job.Printer.Name);
+                    }
                 }
             }
 
@@ -502,7 +507,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
         public void UpdatePrintJob(CloudPrintJob job)
         {
-            Logger.Log(LogLevel.Debug, "Updated job {0} with status {1}", job.Status.ToString());
+            Logger.Log(LogLevel.Debug, "Updated job {0} with status {1}", job.JobID, job.Status.ToString());
 
             var reqdata = new
             {
@@ -514,7 +519,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
             HTTPHelper.PostCloudPrintUrlEncodedRequest(OAuthTicket, "control", reqdata);
 
-            if (job.Status == CloudPrintJobStatus.DONE || job.Status == CloudPrintJobStatus.ERROR)
+            if (job.Status == CloudPrintJobStatus.DONE)
             {
                 CloudPrintJob _job;
                 _PrintJobs.TryRemove(job.JobID, out _job);

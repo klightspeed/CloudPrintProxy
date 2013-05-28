@@ -296,6 +296,7 @@ namespace TSVCEO.CloudPrint.Printing
             yield return "finddevice";
             yield return "putdeviceprops";
             yield return "setdevice";
+            yield return ".setsafe";
         }
 
         protected string GeneratePrinterPort(RegistryKey regkey)
@@ -389,7 +390,7 @@ namespace TSVCEO.CloudPrint.Printing
                 {
                     "-dNOPAUSE",
                     "-dBATCH",
-                    "-dSAFER",
+                    "-dNOSAFER",
                     "-c"
                 }.Concat(SetDeviceCommand(printername, jobname))
                  .Concat(SetPageDeviceCommand(ticket))
