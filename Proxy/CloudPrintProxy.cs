@@ -191,6 +191,11 @@ namespace TSVCEO.CloudPrint.Proxy
                 defaults = printer.Defaults
             };
 
+            string printersdir = Path.Combine(Config.DebugDirName, "Printers");
+            Directory.CreateDirectory(printersdir);
+            File.WriteAllBytes(Path.Combine(printersdir, printer.Name + ".capabilities.xml"), Encoding.UTF8.GetBytes(printer.Capabilities));
+            File.WriteAllBytes(Path.Combine(printersdir, printer.Name + ".defaults.xml"), Encoding.UTF8.GetBytes(printer.Defaults));
+
             var response = HTTPHelper.PostCloudPrintMultiPartRequest(OAuthTicket, "update", reqdata);
         }
 

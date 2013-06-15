@@ -41,6 +41,8 @@ namespace TSVCEO.CloudPrint
 
         public static int UserAuthHttpPort { get { return Int32.Parse(ConfigurationManager.AppSettings["UserAuthHttpPort"] ?? "12387"); } }
 
+        public static string DebugDirName { get { return GetApplicationDirFilename("Debug"); } }
+
         public static string CredentialDatabaseFilename { get { return GetApplicationDirFilename(ConfigurationManager.AppSettings["CredentialDatabaseFilename"]); } }
         public static string SessionDatabaseFilename { get { return GetApplicationDirFilename(ConfigurationManager.AppSettings["SessionDatabaseFilename"]); } }
 

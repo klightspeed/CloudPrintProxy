@@ -111,6 +111,7 @@ namespace TSVCEO.CloudPrint.Printing
                     {
                         pj.Print(job);
                     }
+                    Logger.Log(LogLevel.Info, "Job {0} Finished", job.JobID);
                     job.SetStatus(CloudPrintJobStatus.DONE);
                 }
                 catch (Exception ex)

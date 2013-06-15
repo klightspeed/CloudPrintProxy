@@ -321,6 +321,10 @@ namespace TSVCEO.CloudPrint.Printing
                     Logger.Log(LogLevel.Warning, "Ghostscript returned code {0}\n\nOutput:\n{1}\n\nError:\n{2}", exitcode, outstr, errstr);
                     throw new InvalidOperationException(String.Format("Ghostscript error {0}\n{1}", exitcode, errstr));
                 }
+                else
+                {
+                    Logger.Log(LogLevel.Info, "Ghostscript output:\n{1}\n\nError:\n{2}", outstr, errstr);
+                }
             }
             finally
             {

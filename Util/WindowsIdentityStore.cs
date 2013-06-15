@@ -520,7 +520,7 @@ namespace TSVCEO.CloudPrint.Util
 
             ProcessStartInfo startinfo = new ProcessStartInfo
             {
-                Arguments = "\"" + exename + "\" " + CreateCommandArguments(args),
+                Arguments = CreateCommandArguments(args),
                 FileName = exename,
                 CreateNoWindow = true,
                 ErrorDialog = false,
@@ -547,6 +547,7 @@ namespace TSVCEO.CloudPrint.Util
         public static int RunProcessAsUser(string username, Stream stdin, Stream stdout, Stream stderr, string exename, string[] args)
         {
             return RunProcessAsUser(username, new StreamReader(stdin, Encoding.UTF8, false), new StreamWriter(stdout, Encoding.UTF8), new StreamWriter(stderr, Encoding.UTF8), exename, args);
+
         }
 
         public static int RunProcessAsUser(string username, TextReader stdin, TextWriter stdout, TextWriter stderr, string exename, string[] args)
@@ -561,6 +562,10 @@ namespace TSVCEO.CloudPrint.Util
                 stdintask.Wait();
                 stdouttask.Wait();
                 stderrtask.Wait();
+                stdout.Write(proc.StandardOutput.ReadToEnd());
+                stderr.Write(proc.StandardError.ReadToEnd());
+                stdout.Flush();
+                stderr.Flush();
                 return proc.ExitCode;
             }
         }
