@@ -10,6 +10,7 @@ using System.Security.Cryptography;
 using System.Security.AccessControl;
 using System.Diagnostics;
 using System.Data.SQLite;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
 
@@ -151,40 +152,6 @@ namespace TSVCEO.CloudPrint.Util
 
         #endregion
 
-        #region interop structures
-
-        private struct StartupInfo
-        {
-            public int StructSize;
-            public IntPtr Reserved;
-            public string Desktop;
-            public string Title;
-            public int X;
-            public int Y;
-            public int XSize;
-            public int YSize;
-            public int XCountChars;
-            public int YCountChars;
-            public int FillAttribute;
-            public StartFlags Flags;
-            public ShowWindow ShowWindow;
-            public int cbReserved2;
-            public IntPtr lpReserved2;
-            public SafeFileHandle hStdInput;
-            public SafeFileHandle hStdOutput;
-            public SafeFileHandle hStdError;
-        }
-
-        private struct ProcessInfo
-        {
-            public IntPtr ProcessHandle;
-            public IntPtr ThreadHandle;
-            public int ProcessID;
-            public int ThreadID;
-        }
-
-        #endregion
-
         #region interop handles
 
         private class GenericSafeHandle : SafeHandle
@@ -264,105 +231,18 @@ namespace TSVCEO.CloudPrint.Util
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         private static extern bool LogonUser(string username, string domain, [In] IntPtr password, LogonType logonType, LogonProvider logonProvider, out IntPtr token);
         
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool CreateProcess(
-            string lpApplicationName,
-            string lpCommandLine,
-            IntPtr lpProcessAttributes,
-            IntPtr lpThreadAttributes,
-            bool bInheritHandles, 
-            int dwCreationFlags,
-            IntPtr lpEnvironment,
-            string lpCurrentDirectory,
-            ref StartupInfo lpStartupInfo,
-            out ProcessInfo lpProcessInfo
-        );
-
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool CreateProcessAsUser(
-            IntPtr hToken,
-            string lpApplicationName,
-            string lpCommandLine,
-            IntPtr lpProcessAttributes,
-            IntPtr lpThreadAttributes,
-            bool bInheritHandles,
-            ProcessCreationFlags dwCreationFlags,
-            IntPtr lpEnvironment,
-            string lpCurrentDirectory,
-            ref StartupInfo lpStartupInfo,
-            out ProcessInfo lpProcessInfo
-        );
-
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool CreateProcessWithTokenW(
-            IntPtr hToken,
-            string lpApplicationName,
-            string lpCommandLine,
-            ProcessCreationFlags dwCreationFlags,
-            IntPtr lpEnvironment,
-            string lpCurrentDirectory,
-            ref StartupInfo lpStartupInfo,
-            out ProcessInfo lpProcessInfo
-        );
-
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool CreateProcessWithLogonW(
-            string lpUsername,
-            string lpDomain,
-            IntPtr lpPassword,
-            LogonFlags dwLogonFlags,
-            string lpApplicationName,
-            string lpCommandLine,
-            ProcessCreationFlags dwCreationFlags,
-            IntPtr lpEnvironment,
-            string lpCurrentDirectory,
-            ref StartupInfo lpStartupInfo,
-            out ProcessInfo lpProcessInfo
-        );
-
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool CreatePipe(out SafeFileHandle hReadPipe, out SafeFileHandle hWritePipe, IntPtr lpPipeAttributes, int nSize);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool CloseHandle(IntPtr handle);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool GetExitCodeProcess(IntPtr ProcessHandle, out int ExitCode);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern int WaitForSingleObject(IntPtr handle, int dwMilliseconds);
-
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr GetProcessWindowStation();
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr GetThreadDesktop(int dwThreadId);
 
-        [DllImport("kernel32.dll")]
-        private static extern IntPtr GetCurrentProcess();
-
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern int GetCurrentThreadId();
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool DuplicateHandle(IntPtr hSourceProcessHandle, IntPtr hSourceHandle, IntPtr hTargetProcessHandle, out IntPtr lpTargetHandle, int dwDesiredAccess, int bInheritHandle, int dwOptions);
 
         #endregion
 
         #region private methods
-
-        private static IntPtr DuplicateHandle(IntPtr sourceHandle, int desiredAccess)
-        {
-            IntPtr processHandle = GetCurrentProcess();
-            IntPtr newHandle;
-
-            if (!DuplicateHandle(processHandle, sourceHandle, processHandle, out newHandle, desiredAccess, 0, 0))
-            {
-                Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
-            }
-
-            return newHandle;
-        }
 
         private static bool LogonUser(string username, string domain, SecureString password, LogonType logonType, LogonProvider logonProvider, out IntPtr token)
         {
@@ -559,45 +439,6 @@ namespace TSVCEO.CloudPrint.Util
             return String.Join(" ", args.Select(s => EscapeCommandLineArgument(s)).ToArray());
         }
 
-        private static IntPtr CreateProcessAsUser(string username, SafeFileHandle hstdin, SafeFileHandle hstdout, SafeFileHandle hstderr, string exename, string[] args)
-        {
-            ProcessInfo procinfo = new ProcessInfo();
-            StartupInfo startinfo = new StartupInfo
-            {
-                StructSize = Marshal.SizeOf(typeof(StartupInfo)),
-                Desktop = null,
-                Title = null,
-                Flags = StartFlags.UseStdHandles,
-                ShowWindow = ShowWindow.Hide,
-                hStdInput = hstdin,
-                hStdOutput = hstdout,
-                hStdError = hstderr
-            };
-
-            IntPtr plainpassword = IntPtr.Zero;
-
-            try
-            {
-                plainpassword = Marshal.SecureStringToGlobalAllocUnicode(GetUserCredential(username));
-
-                if (!CreateProcessWithLogonW(username, Domain, plainpassword, 0, exename, "\"" + exename + "\" " + CreateCommandArguments(args), ProcessCreationFlags.CreateNoWindow, IntPtr.Zero, null, ref startinfo, out procinfo))
-                {
-                    Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
-                }
-
-                CloseHandle(procinfo.ThreadHandle);
-
-                return procinfo.ProcessHandle;
-            }
-            finally
-            {
-                if (plainpassword != IntPtr.Zero)
-                {
-                    Marshal.ZeroFreeGlobalAllocUnicode(plainpassword);
-                }
-            }
-        }
-
         private static void AddUserToCurrentWindowStationDesktop(string username)
         {
             IntPtr winsta = GetProcessWindowStation();
@@ -673,6 +514,36 @@ namespace TSVCEO.CloudPrint.Util
             return GetWindowsIdentity(username).Impersonate();
         }
 
+        private static Process CreateProcessAsUser(string username, string exename, string[] args)
+        {
+            Process proc = new Process();
+
+            ProcessStartInfo startinfo = new ProcessStartInfo
+            {
+                Arguments = "\"" + exename + "\" " + CreateCommandArguments(args),
+                FileName = exename,
+                CreateNoWindow = true,
+                ErrorDialog = false,
+                LoadUserProfile = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+                UseShellExecute = false,
+                WorkingDirectory = Environment.GetEnvironmentVariable("SYSTEMDRIVE") + "\\",
+                UserName = username,
+                Domain = Domain,
+                Password = GetUserCredential(username)
+            };
+
+            proc.StartInfo = startinfo;
+
+            AddUserToCurrentWindowStationDesktop(username);
+
+            return proc;
+        }
+
         public static int RunProcessAsUser(string username, Stream stdin, Stream stdout, Stream stderr, string exename, string[] args)
         {
             return RunProcessAsUser(username, new StreamReader(stdin, Encoding.UTF8, false), new StreamWriter(stdout, Encoding.UTF8), new StreamWriter(stderr, Encoding.UTF8), exename, args);
@@ -680,40 +551,17 @@ namespace TSVCEO.CloudPrint.Util
 
         public static int RunProcessAsUser(string username, TextReader stdin, TextWriter stdout, TextWriter stderr, string exename, string[] args)
         {
-            SafeFileHandle rstdin;
-            SafeFileHandle wstdin;
-            SafeFileHandle rstdout;
-            SafeFileHandle wstdout;
-            SafeFileHandle rstderr;
-            SafeFileHandle wstderr;
-
-            CreatePipe(out rstdin, out wstdin, IntPtr.Zero, 0);
-            CreatePipe(out rstdout, out wstdout, IntPtr.Zero, 0);
-            CreatePipe(out rstderr, out wstderr, IntPtr.Zero, 0);
-
-            TextWriter sstdin = new StreamWriter(new FileStream(wstdin, FileAccess.Write));
-            TextReader sstdout = new StreamReader(new FileStream(rstdout, FileAccess.Read));
-            TextReader sstderr = new StreamReader(new FileStream(rstderr, FileAccess.Read));
-
-            IntPtr proc = IntPtr.Zero;
-            try
+            using (Process proc = CreateProcessAsUser(username, exename, args))
             {
-                AddUserToCurrentWindowStationDesktop(username);
-
-                proc = CreateProcessAsUser(username, rstdin, wstdout, wstderr, exename, args);
-
-                Task stdintask = Task.Factory.StartNew(() => { try { sstdin.Write(stdin.ReadToEnd()); } catch { } });
-                Task stdouttask = Task.Factory.StartNew(() => { try { stdout.Write(sstdout.ReadToEnd()); } catch { } });
-                Task stderrtask = Task.Factory.StartNew(() => { try { stderr.Write(sstderr.ReadToEnd()); } catch { } });
-
-                WaitForSingleObject(proc, -1);
-                int exitcode;
-                GetExitCodeProcess(proc, out exitcode);
-                return exitcode;
-            }
-            finally
-            {
-                if (proc != IntPtr.Zero) CloseHandle(proc);
+                proc.Start();
+                Task stdintask = Task.Factory.StartNew(() => { try { proc.StandardInput.Write(stdin.ReadToEnd()); } catch { } });
+                Task stdouttask = Task.Factory.StartNew(() => { try { stdout.Write(proc.StandardOutput.ReadToEnd()); } catch { } });
+                Task stderrtask = Task.Factory.StartNew(() => { try { stderr.Write(proc.StandardError.ReadToEnd()); } catch { } });
+                proc.WaitForExit();
+                stdintask.Wait();
+                stdouttask.Wait();
+                stderrtask.Wait();
+                return proc.ExitCode;
             }
         }
 
