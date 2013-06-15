@@ -65,103 +65,10 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        protected string EscapeCommandLineArgument(string arg)
-        {
-            StringBuilder sb = new StringBuilder();
-            StringReader rdr = new StringReader(arg);
-            int c;
-            sb.Append('"');
-
-            while ((c = rdr.Read()) > 0)
-            {
-                if (c == '"')
-                {
-                    sb.Append("\\\"");
-                }
-                else if (c == '\\')
-                {
-                    int nrbackslash = 1;
-
-                    while (rdr.Peek() == '\\')
-                    {
-                        nrbackslash++;
-                        rdr.Read();
-                    }
-
-                    if (rdr.Peek() == '"')
-                    {
-                        sb.Append(new String('\\', nrbackslash * 2));
-                    }
-                    else
-                    {
-                        sb.Append(new String('\\', nrbackslash));
-                    }
-                }
-                else
-                {
-                    sb.Append((char)c);
-                }
-            }
-
-            sb.Append('"');
-            return sb.ToString();
-        }
-
-        protected string CreateCommandArguments(string[] args)
-        {
-            return String.Join(" ", args.Select(s => EscapeCommandLineArgument(s)).ToArray());
-        }
-
-        protected ProcessStartInfo CreateStartInfo(string command, string[] args)
-        {
-            return new ProcessStartInfo
-            {
-                Arguments = CreateCommandArguments(args),
-                FileName = command,
-                CreateNoWindow = true,
-                ErrorDialog = false,
-                LoadUserProfile = false,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                StandardErrorEncoding = Encoding.UTF8,
-                StandardOutputEncoding = Encoding.UTF8,
-                UseShellExecute = false,
-                WorkingDirectory = Environment.GetEnvironmentVariable("SYSTEMDRIVE") + "\\"
-            };
-        }
-
         protected virtual int RunCommandAsUser(string username, string[] args, Stream stdin, Stream stdout, Stream stderr)
         {
-            string gsexepath = Path.Combine(GetGhostscriptPath("gswin32c.exe"));
-            using (Process proc = WindowsIdentityStore.CreateProcessAsUser(username, CreateStartInfo(gsexepath, args)))
-            {
-                Task proctask = Task.Factory.StartNew(() =>
-                {
-                    proc.Start();
-                    proc.WaitForExit();
-                });
-                Task stdintask = Task.Factory.StartNew(() =>
-                {
-                    try
-                    {
-                        proc.StandardInput.Write(new StreamReader(stdin, Encoding.UTF8, false).ReadToEnd());
-                    }
-                    catch
-                    {
-                    }
-                });
-
-                proctask.Wait();
-                proc.StandardInput.Close();
-                string stdoutstr = proc.StandardOutput.ReadToEnd();
-                string stderrstr = proc.StandardError.ReadToEnd();
-                byte[] stdoutdata = Encoding.UTF8.GetBytes(stdoutstr);
-                stdout.Write(stdoutdata, 0, stdoutdata.Length);
-                byte[] stderrdata = Encoding.UTF8.GetBytes(stderrstr);
-                stderr.Write(stderrdata, 0, stderrdata.Length);
-                return proc.ExitCode;
-            }
+            string gsexepath = GetGhostscriptPath("gswin32c.exe");
+            return WindowsIdentityStore.RunProcessAsUser(username, stdin, stdout, stderr, gsexepath, args);
         }
 
         protected string EscapePostscriptString(string str)
