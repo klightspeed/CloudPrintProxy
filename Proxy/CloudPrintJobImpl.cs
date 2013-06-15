@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Printing;
 using System.IO;
+using System.Xml.Linq;
 
 namespace TSVCEO.CloudPrint.Proxy
 {
@@ -12,6 +13,7 @@ namespace TSVCEO.CloudPrint.Proxy
         protected readonly CloudPrintProxy _Proxy;
         protected readonly dynamic _JobAttributes;
         protected readonly CloudPrinter _Printer;
+        protected readonly string _PrintDataFileName;
 
         public override CloudPrinter Printer { get { return _Printer; } }
         public override string JobID { get { return _JobAttributes.id; } }
@@ -32,6 +34,11 @@ namespace TSVCEO.CloudPrint.Proxy
             this.ErrorCode = null;
             this.ErrorMessage = null;
             _Proxy.UpdatePrintJob(this);
+
+            if (status == CloudPrintJobStatus.DONE)
+            {
+                File.Delete(_PrintDataFileName);
+            }
         }
 
         public override void SetError(string errorCode, string errorMessage)
@@ -47,9 +54,9 @@ namespace TSVCEO.CloudPrint.Proxy
             return _Proxy.GetPrintTicket(this); 
         }
 
-        public override Stream GetPrintDataStream()
+        public override string GetPrintDataFile()
         {
-            return _Proxy.GetPrintDataStream(this);
+            return _PrintDataFileName;
         }
 
         public CloudPrintJobImpl(CloudPrintProxy proxy, CloudPrinter printer, dynamic job)
@@ -57,6 +64,42 @@ namespace TSVCEO.CloudPrint.Proxy
             this._Proxy = proxy;
             this._Printer = printer;
             this._JobAttributes = job;
+
+            string basename = Path.Combine(Config.DataDirName, "PrintJobs", job.id);
+
+            this._PrintDataFileName = basename + ".pdf";
+
+            if (!File.Exists(this._PrintDataFileName))
+            {
+                using (Stream datastream = File.Create(this._PrintDataFileName))
+                {
+                    using (Stream inputstream = _Proxy.GetPrintDataStream(this))
+                    {
+                        inputstream.CopyTo(datastream);
+                    }
+                }
+
+                XDocument xdoc = new XDocument(
+                    new XElement("CloudPrintJob",
+                        new XElement("ContentType", this.ContentType),
+                        new XElement("Domain", this.Domain),
+                        new XElement("JobID", this.JobID),
+                        new XElement("JobTitle", this.JobTitle),
+                        new XElement("Printer",
+                            new XElement("ID", this.Printer.PrinterID),
+                            new XElement("Name", this.Printer.Name)
+                        ),
+                        new XElement("Username", this.Username)
+                    )
+                );
+
+                xdoc.Save(basename + ".job.xml");
+
+                using (Stream ticketstream = File.Create(basename + ".ticket.xml"))
+                {
+                    this.GetPrintTicket().SaveTo(ticketstream);
+                }
+            }
         }
     }
 }

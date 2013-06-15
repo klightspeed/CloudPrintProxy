@@ -16,7 +16,7 @@ namespace TSVCEO.CloudPrint
         #region private properties
 
         private static Mutex ConfigFileMutex { get; set; }
-        private static string ApplicationDir { get { return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location); } }
+        private static string AppDataDir { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Townsville Catholic Education Office", "CloudPrint"); } }
 
         #endregion
 
@@ -41,12 +41,12 @@ namespace TSVCEO.CloudPrint
 
         public static int UserAuthHttpPort { get { return Int32.Parse(ConfigurationManager.AppSettings["UserAuthHttpPort"] ?? "12387"); } }
 
-        public static string DebugDirName { get { return GetApplicationDirFilename("Debug"); } }
+        public static string DataDirName { get { return GetAppDataDirFilename("Data"); } }
 
-        public static string CredentialDatabaseFilename { get { return GetApplicationDirFilename(ConfigurationManager.AppSettings["CredentialDatabaseFilename"]); } }
-        public static string SessionDatabaseFilename { get { return GetApplicationDirFilename(ConfigurationManager.AppSettings["SessionDatabaseFilename"]); } }
+        public static string CredentialDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["CredentialDatabaseFilename"]); } }
+        public static string SessionDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["SessionDatabaseFilename"]); } }
 
-        private static string ConfigFileName { get { return GetApplicationDirFilename(ConfigurationManager.AppSettings["VolatileConfigFilename"]); } }
+        private static string ConfigFileName { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["VolatileConfigFilename"]); } }
         
         #endregion
 
@@ -76,9 +76,9 @@ namespace TSVCEO.CloudPrint
 
         #region private methods
 
-        private static string GetApplicationDirFilename(string filename)
+        private static string GetAppDataDirFilename(string filename)
         {
-            return Path.Combine(ApplicationDir, filename);
+            return Path.Combine(AppDataDir, filename);
         }
 
         private static T LockConfigFile<T>(Func<T> action)
@@ -134,7 +134,7 @@ namespace TSVCEO.CloudPrint
                 {
                     XDocument doc = ReadConfigFileNoLock();
                     updater(doc);
-                    string tempname = GetApplicationDirFilename(Path.GetRandomFileName());
+                    string tempname = GetAppDataDirFilename(Path.GetRandomFileName());
                     
                     using (var stream = File.Open(tempname, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                     {

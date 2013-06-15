@@ -272,66 +272,44 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, Stream datastream)
+        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, string datafile)
         {
-            string jobfilename = null;
+            string tmpdir = Path.Combine(Environment.GetEnvironmentVariable("SystemRoot"), "Temp");
+            SetupUserPrinter(username, printername);
+            string[] setup = SetPageDeviceCommand(ticket).ToArray();
+            string basename = Path.Combine(tmpdir, Guid.NewGuid().ToString());
 
-            try
+            var jobfilesecurity = File.GetAccessControl(datafile);
+            jobfilesecurity.AddAccessRule(new FileSystemAccessRule(WindowsIdentityStore.GetWindowsIdentity(username).User, FileSystemRights.ReadAndExecute, AccessControlType.Allow));
+            File.SetAccessControl(datafile, jobfilesecurity);
+
+            string[] args = new string[]
             {
-                string tmpdir = Path.Combine(Environment.GetEnvironmentVariable("SystemRoot"), "Temp");
-                SetupUserPrinter(username, printername);
-                string[] setup = SetPageDeviceCommand(ticket).ToArray();
-                string basename = Path.Combine(tmpdir, Guid.NewGuid().ToString());
-                jobfilename = basename + ".pdf";
-
-                using (Stream jobfile = File.Open(jobfilename, FileMode.CreateNew))
-                {
-                    datastream.CopyTo(jobfile);
-                }
-
-                var jobfilesecurity = File.GetAccessControl(jobfilename);
-                jobfilesecurity.AddAccessRule(new FileSystemAccessRule(WindowsIdentityStore.GetWindowsIdentity(username).User, FileSystemRights.ReadAndExecute, AccessControlType.Allow));
-                File.SetAccessControl(jobfilename, jobfilesecurity);
-
-                string[] args = new string[]
-                {
-                    "-dNOPAUSE",
-                    "-dBATCH",
-                    "-dNOSAFER",
-                    "-c"
-                }.Concat(SetDeviceCommand(printername, jobname))
-                 .Concat(SetPageDeviceCommand(ticket))
-                 .Concat(new string[]
-                {
-                    "-f",
-                    jobfilename
-                }).ToArray();
-
-                MemoryStream outstream = new MemoryStream();
-                MemoryStream errstream = new MemoryStream();
-                MemoryStream instream = new MemoryStream(new byte[0]);
-
-                int exitcode = RunCommandAsUser(username, args, instream, outstream, errstream);
-
-                string outstr = Encoding.UTF8.GetString(outstream.ToArray());
-                string errstr = Encoding.UTF8.GetString(errstream.ToArray());
-
-                if (exitcode != 0)
-                {
-                    Logger.Log(LogLevel.Warning, "Ghostscript returned code {0}\n\nOutput:\n{1}\n\nError:\n{2}", exitcode, outstr, errstr);
-                    throw new InvalidOperationException(String.Format("Ghostscript error {0}\n{1}", exitcode, errstr));
-                }
-                else
-                {
-                    Logger.Log(LogLevel.Info, "Ghostscript output:\n{1}\n\nError:\n{2}", outstr, errstr);
-                }
-            }
-            finally
+                "-dNOPAUSE",
+                "-dBATCH",
+                "-dNOSAFER",
+                "-c"
+            }.Concat(SetDeviceCommand(printername, jobname))
+                .Concat(SetPageDeviceCommand(ticket))
+                .Concat(new string[]
             {
-                if (jobfilename != null && File.Exists(jobfilename))
-                {
-                    File.Delete(jobfilename);
-                }
+                "-f",
+                datafile
+            }).ToArray();
+
+            MemoryStream outstream = new MemoryStream();
+            MemoryStream errstream = new MemoryStream();
+            MemoryStream instream = new MemoryStream(new byte[0]);
+
+            int exitcode = RunCommandAsUser(username, args, instream, outstream, errstream);
+
+            string outstr = Encoding.UTF8.GetString(outstream.ToArray());
+            string errstr = Encoding.UTF8.GetString(errstream.ToArray());
+
+            if (exitcode != 0)
+            {
+                Logger.Log(LogLevel.Warning, "Ghostscript returned code {0}\n\nOutput:\n{1}\n\nError:\n{2}", exitcode, outstr, errstr);
+                throw new InvalidOperationException(String.Format("Ghostscript error {0}\n{1}", exitcode, errstr));
             }
         }
 
@@ -342,8 +320,8 @@ namespace TSVCEO.CloudPrint.Printing
         public override void Print(CloudPrintJob job)
         {
             PrintTicket printTicket = job.GetPrintTicket();
-            Stream printDataStream = job.GetPrintDataStream();
-            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printDataStream);
+            string printDataFile = job.GetPrintDataFile();
+            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printDataFile);
         }
 
         #endregion

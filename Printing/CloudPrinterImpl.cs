@@ -5,6 +5,7 @@ using System.Text;
 using System.IO;
 using System.Printing;
 using System.Security.Cryptography;
+using System.Xml.Linq;
 
 namespace TSVCEO.CloudPrint.Printing
 {
@@ -40,7 +41,7 @@ namespace TSVCEO.CloudPrint.Printing
 
             this.Name = queue.FullName;
             this.Description = queue.Description;
-            this.Capabilities = Encoding.UTF8.GetString(queue.GetPrintCapabilitiesAsXml().ToArray());
+            this.Capabilities = XDocument.Load(queue.GetPrintCapabilitiesAsXml()).ToString();
             this.Defaults = new StreamReader(defaults.GetXmlStream(), Encoding.UTF8, false).ReadToEnd();
             this.CapsHash = GetMD5Hash(Encoding.UTF8.GetBytes(Capabilities));
         }

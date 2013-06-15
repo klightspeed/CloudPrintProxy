@@ -52,7 +52,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
         #region public properties
         public bool IsRegistered { get { return Config.OAuthRefreshToken != null; } }
-        public IEnumerable<CloudPrinter> Queues { get { return _Queues == null ? new CloudPrinter[0] : _Queues.AsEnumerable(); } }
+        public IEnumerable<CloudPrinter> Queues { get { return UpdatePrintQueues(); } }
         public IEnumerable<CloudPrintJob> PrintJobs { get { return UpdateCloudPrintJobs(); } }
         #endregion
 
@@ -191,7 +191,7 @@ namespace TSVCEO.CloudPrint.Proxy
                 defaults = printer.Defaults
             };
 
-            string printersdir = Path.Combine(Config.DebugDirName, "Printers");
+            string printersdir = Path.Combine(Config.DataDirName, "Printers");
             Directory.CreateDirectory(printersdir);
             File.WriteAllBytes(Path.Combine(printersdir, printer.Name + ".capabilities.xml"), Encoding.UTF8.GetBytes(printer.Capabilities));
             File.WriteAllBytes(Path.Combine(printersdir, printer.Name + ".defaults.xml"), Encoding.UTF8.GetBytes(printer.Defaults));
@@ -210,6 +210,8 @@ namespace TSVCEO.CloudPrint.Proxy
         {
             if (PrintQueuesLastUpdated + MinPrintQueueUpdateInterval < DateTime.Now)
             {
+                PrintQueuesLastUpdated = DateTime.Now;
+
                 Dictionary<string, string> printerIds;
 
                 if (_Queues == null || _Queues.Count == 0)
@@ -248,11 +250,14 @@ namespace TSVCEO.CloudPrint.Proxy
                 }
 
                 _Queues = queues;
-                return queues;
+
+                UpdateCloudPrintJobs();
+
+                return queues.AsEnumerable();
             }
             else
             {
-                return Queues;
+                return _Queues.AsEnumerable();
             }
         }
 
