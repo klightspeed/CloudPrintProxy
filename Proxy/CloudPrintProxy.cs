@@ -303,11 +303,11 @@ namespace TSVCEO.CloudPrint.Proxy
                 {
                     _PrintJobs[job.JobID] = job;
                     PrintJobProcessor.AddJob(job);
-                    Logger.Log(LogLevel.Info, "Received new print job {0} [{1}] for printer [{2}]", job.JobID, job.JobTitle, job.Printer.Name);
+                    Logger.Log(LogLevel.Info, "Received new print job {0} [{1}] owned by {2} for printer [{3}]", job.JobID, job.JobTitle, job.Username, job.Printer.Name);
                     if (job.Status == CloudPrintJobStatus.ERROR || job.Status == CloudPrintJobStatus.IN_PROGRESS)
                     {
                         job.SetStatus(CloudPrintJobStatus.QUEUED);
-                        Logger.Log(LogLevel.Info, "Restarting print job {0} [{1}] for printer [{2}]", job.JobID, job.JobTitle, job.Printer.Name);
+                        Logger.Log(LogLevel.Info, "Restarting print job {0} [{1}] owned by {2} for printer [{3}]", job.JobID, job.JobTitle, job.Username, job.Printer.Name);
                     }
                 }
             }

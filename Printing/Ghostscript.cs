@@ -274,14 +274,8 @@ namespace TSVCEO.CloudPrint.Printing
 
         protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, string datafile)
         {
-            string tmpdir = Path.Combine(Environment.GetEnvironmentVariable("SystemRoot"), "Temp");
             SetupUserPrinter(username, printername);
             string[] setup = SetPageDeviceCommand(ticket).ToArray();
-            string basename = Path.Combine(tmpdir, Guid.NewGuid().ToString());
-
-            var jobfilesecurity = File.GetAccessControl(datafile);
-            jobfilesecurity.AddAccessRule(new FileSystemAccessRule(WindowsIdentityStore.GetWindowsIdentity(username).User, FileSystemRights.ReadAndExecute, AccessControlType.Allow));
-            File.SetAccessControl(datafile, jobfilesecurity);
 
             string[] args = new string[]
             {

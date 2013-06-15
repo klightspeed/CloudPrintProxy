@@ -504,6 +504,33 @@ namespace TSVCEO.CloudPrint.Util
             return null;
         }
 
+        public static NTAccount GetWindowsIdentityReference(string username)
+        {
+            return new NTAccount((Domain == null ? "" : Domain + "\\") + username);
+        }
+
+        public static void SetFileAccess(string filename, string username)
+        {
+            try
+            {
+                //Type privilegeType = Type.GetType("System.Security.AccessControl.Privilege");
+                //object privilege = Activator.CreateInstance(privilegeType, "SeBackupPrivilege");
+
+                NTAccount idref = GetWindowsIdentityReference(username);
+                FileSecurity fs = File.GetAccessControl(filename, AccessControlSections.Access);
+                //fs.SetOwner(idref);
+                fs.AddAccessRule(new FileSystemAccessRule(idref, FileSystemRights.FullControl, AccessControlType.Allow));
+
+                //privilegeType.GetMethod("Enable").Invoke(privilege, null);
+                File.SetAccessControl(filename, fs);
+                //privilegeType.GetMethod("Revert").Invoke(privilege, null);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LogLevel.Info, "Error setting owner on file {0} to {1}:\n{2}", filename, username, ex.ToString());
+            }
+        }
+
         public static bool HasWindowsIdentity(string username)
         {
             return GetWindowsIdentity(username) != null;

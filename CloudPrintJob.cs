@@ -20,6 +20,8 @@ namespace TSVCEO.CloudPrint
         [DataMember] public virtual string JobTitle { get; protected set; }
         [DataMember] public virtual string Username { get; protected set; }
         [DataMember] public virtual string Domain { get; protected set; }
+        [DataMember] public virtual DateTime CreateTime { get; protected set; }
+        [DataMember] public virtual DateTime UpdateTime { get; protected set; }
         [DataMember] public virtual CloudPrintJobStatus Status { get; protected set; }
         [DataMember] public virtual string ErrorCode { get; protected set; }
         [DataMember] public virtual string ErrorMessage { get; protected set; }
