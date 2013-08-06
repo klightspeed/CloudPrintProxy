@@ -14,7 +14,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Townsville Catholic Education Office")]
 [assembly: AssemblyProduct("TSVCEO.CloudPrint")]
-[assembly: AssemblyCopyright("Copyright © Townsville Catholic Education Office 2013")]
+[assembly: AssemblyCopyright("Copyright © 2013 Townsville Catholic Education Office")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
