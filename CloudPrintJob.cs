@@ -20,6 +20,8 @@ namespace TSVCEO.CloudPrint
         [DataMember] public virtual string JobTitle { get; protected set; }
         [DataMember] public virtual string Username { get; protected set; }
         [DataMember] public virtual string Domain { get; protected set; }
+        [DataMember] public virtual DateTime CreateTime { get; protected set; }
+        [DataMember] public virtual DateTime UpdateTime { get; protected set; }
         [DataMember] public virtual CloudPrintJobStatus Status { get; protected set; }
         [DataMember] public virtual string ErrorCode { get; protected set; }
         [DataMember] public virtual string ErrorMessage { get; protected set; }
@@ -27,6 +29,6 @@ namespace TSVCEO.CloudPrint
         public virtual void SetStatus(CloudPrintJobStatus status) { throw new NotImplementedException(); }
         public virtual void SetError(string ErrorCode, string ErrorMessage) { throw new NotImplementedException(); }
         public virtual PrintTicket GetPrintTicket() { throw new NotImplementedException(); }
-        public virtual Stream GetPrintDataStream() { throw new NotImplementedException(); }
+        public virtual string GetPrintDataFile() { throw new NotImplementedException(); }
     }
 }

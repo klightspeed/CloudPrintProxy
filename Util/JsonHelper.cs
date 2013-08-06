@@ -100,7 +100,7 @@ namespace TSVCEO.CloudPrint.Util
             WriteJsonObject(writer, TypeDescriptor.GetProperties(obj).OfType<PropertyDescriptor>().ToDictionary(prop => prop.Name, prop => prop.GetValue(obj)));
         }
 
-        private static void WriteJsonValue(JsonWriter writer, dynamic value)
+        private static void WriteJsonValue(JsonWriter writer, object value)
         {
             Type t = value.GetType();
 
@@ -110,11 +110,11 @@ namespace TSVCEO.CloudPrint.Util
             }
             else if (value is IDictionary)
             {
-                WriteJsonObject(writer, value);
+                WriteJsonObject(writer, (IDictionary)value);
             }
             else if (value is IEnumerable)
             {
-                WriteJsonArray(writer, value);
+                WriteJsonArray(writer, (IEnumerable)value);
             }
             else if (value.GetType().IsPrimitive)
             {
@@ -127,13 +127,13 @@ namespace TSVCEO.CloudPrint.Util
 
         }
 
-        private static void WriteJson(JsonTextWriter writer, dynamic value)
+        private static void WriteJson(JsonTextWriter writer, object value)
         {
             WriteJsonValue(writer, value);
             writer.Flush();
         }
 
-        public static void WriteJson(TextWriter writer, dynamic value)
+        public static void WriteJson(TextWriter writer, object value)
         {
             WriteJson(new JsonTextWriter(writer), value);
             writer.Flush();

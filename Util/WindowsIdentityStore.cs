@@ -2,12 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Security.Principal;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Cryptography;
+using System.Security.AccessControl;
 using System.Diagnostics;
 using System.Data.SQLite;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace TSVCEO.CloudPrint.Util
 {
@@ -17,21 +22,28 @@ namespace TSVCEO.CloudPrint.Util
 
         private enum LogonType : int
         {
-            LOGON32_LOGON_INTERACTIVE = 2,
-            LOGON32_LOGON_NETWORK = 3,
-            LOGON32_LOGON_BATCH = 4,
-            LOGON32_LOGON_SERVICE = 5,
-            LOGON32_LOGON_UNLOCK = 7,
-            LOGON32_LOGON_NETWORK_CLEARTEXT = 8,
-            LOGON32_LOGON_NEW_CREDENTIALS = 9
+            Interactive = 2,
+            Network = 3,
+            Batch = 4,
+            Service = 5,
+            Unlock = 7,
+            Cleartext = 8,
+            NewCredentials = 9
         }
 
         private enum LogonProvider : int
         {
-            LOGON32_PROVIDER_DEFAULT = 0,
-            LOGON32_PROVIDER_WINNT35 = 1,
-            LOGON32_PROVIDER_WINNT40 = 2,
-            LOGON32_PROVIDER_WINNT50 = 3
+            Default = 0,
+            Winnt35 = 1,
+            Winnt40 = 2,
+            Winnt50 = 3
+        }
+
+        [Flags]
+        private enum LogonFlags : int
+        {
+            WithProfile = 1,
+            NetcredentialsOnly = 2
         }
 
         private enum JoinStatus : int
@@ -40,6 +52,147 @@ namespace TSVCEO.CloudPrint.Util
             UnJoined = 1,
             Workgroup = 2,
             Domain = 3
+        }
+
+        [Flags]
+        private enum StartFlags : int
+        {
+            UseShowWindow    = 0x00000001,
+            UseSize          = 0x00000002,
+            UsePosition      = 0x00000004,
+            UseCountChars    = 0x00000008,
+            UseFillAttribute = 0x00000010,
+            RunFullscreen    = 0x00000020,
+            ForceOnFeedback  = 0x00000040,
+            ForceOffFeedback = 0x00000080,
+            UseStdHandles    = 0x00000100,
+            UseHotkey        = 0x00000200,
+            TitleIsLinkName  = 0x00000800,
+            TitleIsAppId     = 0x00001000,
+            PreventPinning   = 0x00002000
+        }
+
+        private enum ShowWindow : int
+        {
+            Hide,
+            ShowNormal,
+            ShowMinimized,
+            ShowMaximized,
+            ShowNoActive,
+            Show,
+            Minimize,
+            ShowMinNoActive,
+            ShowNA,
+            Restore,
+            ShowDefault,
+            ForceMinimize
+        }
+
+        [Flags]
+        private enum ProcessCreationFlags : int
+        {
+            DebugProcess                 = 0x00000001,
+            DebugOnlyThisProcess         = 0x00000002,
+            CreateSuspended              = 0x00000004,
+            DetachedProcess              = 0x00000008,
+            CreateNewConsole             = 0x00000010,
+            CreateNewProcessGroup        = 0x00000200,
+            CreateUnicodeEnvironment     = 0x00000400,
+            CreateSeparateWowVdm         = 0x00000800,
+            CreateSharedWowVdm           = 0x00001000,
+            InheritParentAffinity        = 0x00010000,
+            CreateProtectedProcess       = 0x00040000,
+            ExtendedStartupInfoPresent   = 0x00080000,
+            CreateBreakawayFromJob       = 0x01000000,
+            CreatePreserveCodeAuthzLevel = 0x02000000,
+            CreateDefaultErrorMode       = 0x04000000,
+            CreateNoWindow               = 0x08000000
+        }
+
+        [Flags]
+        public enum WindowStationRights
+        {
+            EnumDesktops       = 0x00000001,
+            ReadAttributes     = 0x00000002,
+            AccessClipboard    = 0x00000004,
+            CreateDesktop      = 0x00000008,
+            WriteAttributes    = 0x00000010,
+            AccessGlobalAtoms  = 0x00000020,
+            ExitWindows        = 0x00000040,
+            Enumerate          = 0x00000100,
+            ReadScreen         = 0x00000200,
+            Delete             = 0x00010000,
+            ReadPermissions    = 0x00020000,
+            WritePermissions   = 0x00040000,
+            TakeOwnership      = 0x00080000,
+            Synchronize        = 0x00100000,
+
+            AllAccess = EnumDesktops | ReadAttributes | AccessClipboard | CreateDesktop | WriteAttributes | AccessGlobalAtoms | ExitWindows | Enumerate | ReadScreen | Delete | ReadPermissions | WritePermissions | TakeOwnership | Synchronize
+        }
+
+        [Flags]
+        public enum DesktopRights
+        {
+            ReadObjects       = 0x00000001,
+            CreateWindow      = 0x00000002,
+            CreateMenu        = 0x00000004,
+            HookControl       = 0x00000008,
+            JournalRecord     = 0x00000010,
+            JournalPlayback   = 0x00000020,
+            Enumerate         = 0x00000040,
+            WriteObjects      = 0x00000080,
+            SwitchDesktop     = 0x00000100,
+            Delete            = 0x00010000,
+            ReadPermissions   = 0x00020000,
+            WritePermissions  = 0x00040000,
+            TakeOwnership     = 0x00080000,
+            Synchronize       = 0x00100000,
+            AllAccess = ReadObjects | CreateWindow | CreateMenu | HookControl | JournalRecord | JournalPlayback | Enumerate | WriteObjects | SwitchDesktop | Delete | ReadPermissions | WritePermissions | TakeOwnership | Synchronize
+        }
+
+        #endregion
+
+        #region interop handles
+
+        private class GenericSafeHandle : SafeHandle
+        {
+            private Func<IntPtr, bool> _ReleaseCallback;
+
+            public GenericSafeHandle(IntPtr handle, Func<IntPtr, bool> releasecallback)
+                : base(IntPtr.Zero, true)
+            {
+                this._ReleaseCallback = releasecallback;
+                this.handle = handle;
+            }
+
+            protected override bool ReleaseHandle()
+            {
+                return _ReleaseCallback == null ? true : _ReleaseCallback(handle);
+            }
+
+            public override bool IsInvalid { get { return handle == IntPtr.Zero; } }
+        }
+
+        private class GenericObjectSecurity<T> : ObjectSecurity<T>
+            where T: struct
+        {
+            private GenericSafeHandle handle;
+
+            public GenericObjectSecurity(bool isContainer, ResourceType restype, GenericSafeHandle handle, AccessControlSections sections)
+                : base(isContainer, restype, handle, sections)
+            {
+                this.handle = handle;
+            }
+
+            public void Commit()
+            {
+                Persist(handle);
+            }
+
+            public IEnumerable<AccessRule<T>> GetAccessRules()
+            {
+                return GetAccessRules(true, true, typeof(SecurityIdentifier)).OfType<AccessRule<T>>();
+            }
         }
 
         #endregion
@@ -78,10 +231,19 @@ namespace TSVCEO.CloudPrint.Util
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         private static extern bool LogonUser(string username, string domain, [In] IntPtr password, LogonType logonType, LogonProvider logonProvider, out IntPtr token);
         
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr GetProcessWindowStation();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr GetThreadDesktop(int dwThreadId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern int GetCurrentThreadId();
+
         #endregion
 
         #region private methods
-        
+
         private static bool LogonUser(string username, string domain, SecureString password, LogonType logonType, LogonProvider logonProvider, out IntPtr token)
         {
             if (password == null)
@@ -229,7 +391,75 @@ namespace TSVCEO.CloudPrint.Util
             cmd.CommandText = "CREATE TABLE IF NOT EXISTS credentials (obusername TEXT PRIMARY KEY, encpassword TEXT)";
             cmd.ExecuteNonQuery();
         }
-        
+
+        private static string EscapeCommandLineArgument(string arg)
+        {
+            StringBuilder sb = new StringBuilder();
+            StringReader rdr = new StringReader(arg);
+            int c;
+            sb.Append('"');
+
+            while ((c = rdr.Read()) > 0)
+            {
+                if (c == '"')
+                {
+                    sb.Append("\\\"");
+                }
+                else if (c == '\\')
+                {
+                    int nrbackslash = 1;
+
+                    while (rdr.Peek() == '\\')
+                    {
+                        nrbackslash++;
+                        rdr.Read();
+                    }
+
+                    if (rdr.Peek() == '"')
+                    {
+                        sb.Append(new String('\\', nrbackslash * 2));
+                    }
+                    else
+                    {
+                        sb.Append(new String('\\', nrbackslash));
+                    }
+                }
+                else
+                {
+                    sb.Append((char)c);
+                }
+            }
+
+            sb.Append('"');
+            return sb.ToString();
+        }
+
+        private static string CreateCommandArguments(string[] args)
+        {
+            return String.Join(" ", args.Select(s => EscapeCommandLineArgument(s)).ToArray());
+        }
+
+        private static void AddUserToCurrentWindowStationDesktop(string username)
+        {
+            IntPtr winsta = GetProcessWindowStation();
+            IntPtr desktop = GetThreadDesktop(GetCurrentThreadId());
+            SecurityIdentifier ident = GetWindowsIdentity(username).User;
+
+            GenericObjectSecurity<WindowStationRights> winsec = new GenericObjectSecurity<WindowStationRights>(false, ResourceType.WindowObject, new GenericSafeHandle(winsta, null), AccessControlSections.Access);
+            if (winsec.GetAccessRules().Where(r => r.IdentityReference == ident).Count() == 0)
+            {
+                winsec.AddAccessRule(new AccessRule<WindowStationRights>(ident, WindowStationRights.AllAccess, AccessControlType.Allow));
+                winsec.Commit();
+            }
+
+            GenericObjectSecurity<DesktopRights> desksec = new GenericObjectSecurity<DesktopRights>(false, ResourceType.WindowObject, new GenericSafeHandle(desktop, null), AccessControlSections.Access);
+            if (desksec.GetAccessRules().Where(r => r.IdentityReference == ident).Count() == 0)
+            {
+                desksec.AddAccessRule(new AccessRule<DesktopRights>(GetWindowsIdentity(username).User, DesktopRights.AllAccess, AccessControlType.Allow));
+                desksec.Commit();
+            }
+        }
+
         #endregion
 
         #region public methods
@@ -274,6 +504,33 @@ namespace TSVCEO.CloudPrint.Util
             return null;
         }
 
+        public static NTAccount GetWindowsIdentityReference(string username)
+        {
+            return new NTAccount((Domain == null ? "" : Domain + "\\") + username);
+        }
+
+        public static void SetFileAccess(string filename, string username)
+        {
+            try
+            {
+                //Type privilegeType = Type.GetType("System.Security.AccessControl.Privilege");
+                //object privilege = Activator.CreateInstance(privilegeType, "SeBackupPrivilege");
+
+                NTAccount idref = GetWindowsIdentityReference(username);
+                FileSecurity fs = File.GetAccessControl(filename, AccessControlSections.Access);
+                //fs.SetOwner(idref);
+                fs.AddAccessRule(new FileSystemAccessRule(idref, FileSystemRights.FullControl, AccessControlType.Allow));
+
+                //privilegeType.GetMethod("Enable").Invoke(privilege, null);
+                File.SetAccessControl(filename, fs);
+                //privilegeType.GetMethod("Revert").Invoke(privilege, null);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LogLevel.Info, "Error setting owner on file {0} to {1}:\n{2}", filename, username, ex.ToString());
+            }
+        }
+
         public static bool HasWindowsIdentity(string username)
         {
             return GetWindowsIdentity(username) != null;
@@ -284,38 +541,66 @@ namespace TSVCEO.CloudPrint.Util
             return GetWindowsIdentity(username).Impersonate();
         }
 
-        public static Process CreateProcessAsUser(string username, ProcessStartInfo startinfo)
+        private static Process CreateProcessAsUser(string username, string exename, string[] args)
         {
             Process proc = new Process();
-            ProcessStartInfo _startinfo = new ProcessStartInfo
+
+            ProcessStartInfo startinfo = new ProcessStartInfo
             {
-                Arguments = startinfo.Arguments,
-                CreateNoWindow = startinfo.CreateNoWindow,
-                Domain = Domain,
-                ErrorDialog = startinfo.ErrorDialog,
-                ErrorDialogParentHandle = startinfo.ErrorDialogParentHandle,
-                FileName = startinfo.FileName,
-                LoadUserProfile = startinfo.LoadUserProfile,
-                Password = GetUserCredential(username),
-                RedirectStandardError = startinfo.RedirectStandardError,
-                RedirectStandardInput = startinfo.RedirectStandardInput,
-                RedirectStandardOutput = startinfo.RedirectStandardOutput,
-                StandardErrorEncoding = startinfo.StandardErrorEncoding,
-                StandardOutputEncoding = startinfo.StandardOutputEncoding,
+                Arguments = CreateCommandArguments(args),
+                FileName = exename,
+                CreateNoWindow = true,
+                ErrorDialog = false,
+                LoadUserProfile = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+                UseShellExecute = false,
+                WorkingDirectory = Environment.GetEnvironmentVariable("SYSTEMDRIVE") + "\\",
                 UserName = username,
-                UseShellExecute = startinfo.UseShellExecute,
-                Verb = startinfo.Verb,
-                WindowStyle = startinfo.WindowStyle,
-                WorkingDirectory = startinfo.WorkingDirectory
+                Domain = Domain,
+                Password = GetUserCredential(username)
             };
-            proc.StartInfo = _startinfo;
+
+            proc.StartInfo = startinfo;
+
+            AddUserToCurrentWindowStationDesktop(username);
+
             return proc;
+        }
+
+        public static int RunProcessAsUser(string username, Stream stdin, Stream stdout, Stream stderr, string exename, string[] args)
+        {
+            return RunProcessAsUser(username, new StreamReader(stdin, Encoding.UTF8, false), new StreamWriter(stdout, Encoding.UTF8), new StreamWriter(stderr, Encoding.UTF8), exename, args);
+
+        }
+
+        public static int RunProcessAsUser(string username, TextReader stdin, TextWriter stdout, TextWriter stderr, string exename, string[] args)
+        {
+            using (Process proc = CreateProcessAsUser(username, exename, args))
+            {
+                proc.Start();
+                Task stdintask = Task.Factory.StartNew(() => { try { proc.StandardInput.Write(stdin.ReadToEnd()); } catch { } });
+                Task stdouttask = Task.Factory.StartNew(() => { try { stdout.Write(proc.StandardOutput.ReadToEnd()); } catch { } });
+                Task stderrtask = Task.Factory.StartNew(() => { try { stderr.Write(proc.StandardError.ReadToEnd()); } catch { } });
+                proc.WaitForExit();
+                stdintask.Wait();
+                stdouttask.Wait();
+                stderrtask.Wait();
+                stdout.Write(proc.StandardOutput.ReadToEnd());
+                stderr.Write(proc.StandardError.ReadToEnd());
+                stdout.Flush();
+                stderr.Flush();
+                return proc.ExitCode;
+            }
         }
 
         public static WindowsIdentity Login(string username, SecureString password)
         {
             IntPtr token;
-            if (LogonUser(username, Domain, password, LogonType.LOGON32_LOGON_NETWORK, LogonProvider.LOGON32_PROVIDER_DEFAULT, out token))
+            if (LogonUser(username, Domain, password, LogonType.Network, LogonProvider.Default, out token))
             {
                 WindowsIdentity ident = new WindowsIdentity(token);
                 IdentityCache[username] = ident;

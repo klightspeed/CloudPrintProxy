@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Printing;
 using System.Security.Cryptography;
+using System.Xml.Linq;
 
 namespace TSVCEO.CloudPrint.Printing
 {
@@ -33,10 +35,14 @@ namespace TSVCEO.CloudPrint.Printing
 
         public CloudPrinterImpl(PrintQueue queue)
         {
+            PrintTicket defaults = queue.DefaultPrintTicket.Clone();
+            defaults.OutputColor = OutputColor.Monochrome;
+            defaults.PageMediaSize = new PageMediaSize(PageMediaSizeName.ISOA4);
+
             this.Name = queue.FullName;
             this.Description = queue.Description;
-            this.Capabilities = Encoding.UTF8.GetString(queue.GetPrintCapabilitiesAsXml().ToArray());
-            this.Defaults = Encoding.UTF8.GetString(queue.GetPrintCapabilitiesAsXml(queue.DefaultPrintTicket).ToArray());
+            this.Capabilities = XDocument.Load(queue.GetPrintCapabilitiesAsXml()).ToString();
+            this.Defaults = new StreamReader(defaults.GetXmlStream(), Encoding.UTF8, false).ReadToEnd();
             this.CapsHash = GetMD5Hash(Encoding.UTF8.GetBytes(Capabilities));
         }
     }

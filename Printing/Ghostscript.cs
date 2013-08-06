@@ -65,103 +65,10 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        protected string EscapeCommandLineArgument(string arg)
-        {
-            StringBuilder sb = new StringBuilder();
-            StringReader rdr = new StringReader(arg);
-            int c;
-            sb.Append('"');
-
-            while ((c = rdr.Read()) > 0)
-            {
-                if (c == '"')
-                {
-                    sb.Append("\\\"");
-                }
-                else if (c == '\\')
-                {
-                    int nrbackslash = 1;
-
-                    while (rdr.Peek() == '\\')
-                    {
-                        nrbackslash++;
-                        rdr.Read();
-                    }
-
-                    if (rdr.Peek() == '"')
-                    {
-                        sb.Append(new String('\\', nrbackslash * 2));
-                    }
-                    else
-                    {
-                        sb.Append(new String('\\', nrbackslash));
-                    }
-                }
-                else
-                {
-                    sb.Append((char)c);
-                }
-            }
-
-            sb.Append('"');
-            return sb.ToString();
-        }
-
-        protected string CreateCommandArguments(string[] args)
-        {
-            return String.Join(" ", args.Select(s => EscapeCommandLineArgument(s)).ToArray());
-        }
-
-        protected ProcessStartInfo CreateStartInfo(string command, string[] args)
-        {
-            return new ProcessStartInfo
-            {
-                Arguments = CreateCommandArguments(args),
-                FileName = command,
-                CreateNoWindow = true,
-                ErrorDialog = false,
-                LoadUserProfile = false,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                StandardErrorEncoding = Encoding.UTF8,
-                StandardOutputEncoding = Encoding.UTF8,
-                UseShellExecute = false,
-                WorkingDirectory = Environment.GetEnvironmentVariable("SYSTEMDRIVE") + "\\"
-            };
-        }
-
         protected virtual int RunCommandAsUser(string username, string[] args, Stream stdin, Stream stdout, Stream stderr)
         {
-            string gsexepath = Path.Combine(GetGhostscriptPath("gswin32c.exe"));
-            using (Process proc = WindowsIdentityStore.CreateProcessAsUser(username, CreateStartInfo(gsexepath, args)))
-            {
-                Task proctask = Task.Factory.StartNew(() =>
-                {
-                    proc.Start();
-                    proc.WaitForExit();
-                });
-                Task stdintask = Task.Factory.StartNew(() =>
-                {
-                    try
-                    {
-                        proc.StandardInput.Write(new StreamReader(stdin, Encoding.UTF8, false).ReadToEnd());
-                    }
-                    catch
-                    {
-                    }
-                });
-
-                proctask.Wait();
-                proc.StandardInput.Close();
-                string stdoutstr = proc.StandardOutput.ReadToEnd();
-                string stderrstr = proc.StandardError.ReadToEnd();
-                byte[] stdoutdata = Encoding.UTF8.GetBytes(stdoutstr);
-                stdout.Write(stdoutdata, 0, stdoutdata.Length);
-                byte[] stderrdata = Encoding.UTF8.GetBytes(stderrstr);
-                stderr.Write(stderrdata, 0, stderrdata.Length);
-                return proc.ExitCode;
-            }
+            string gsexepath = GetGhostscriptPath("gswin32c.exe");
+            return WindowsIdentityStore.RunProcessAsUser(username, stdin, stdout, stderr, gsexepath, args);
         }
 
         protected string EscapePostscriptString(string str)
@@ -365,62 +272,38 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, Stream datastream)
+        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, string datafile)
         {
-            string jobfilename = null;
+            SetupUserPrinter(username, printername);
+            string[] setup = SetPageDeviceCommand(ticket).ToArray();
 
-            try
+            string[] args = new string[]
             {
-                string tmpdir = Path.Combine(Environment.GetEnvironmentVariable("SystemRoot"), "Temp");
-                SetupUserPrinter(username, printername);
-                string[] setup = SetPageDeviceCommand(ticket).ToArray();
-                string basename = Path.Combine(tmpdir, Guid.NewGuid().ToString());
-                jobfilename = basename + ".pdf";
-
-                using (Stream jobfile = File.Open(jobfilename, FileMode.CreateNew))
-                {
-                    datastream.CopyTo(jobfile);
-                }
-
-                var jobfilesecurity = File.GetAccessControl(jobfilename);
-                jobfilesecurity.AddAccessRule(new FileSystemAccessRule(WindowsIdentityStore.GetWindowsIdentity(username).User, FileSystemRights.ReadAndExecute, AccessControlType.Allow));
-                File.SetAccessControl(jobfilename, jobfilesecurity);
-
-                string[] args = new string[]
-                {
-                    "-dNOPAUSE",
-                    "-dBATCH",
-                    "-dNOSAFER",
-                    "-c"
-                }.Concat(SetDeviceCommand(printername, jobname))
-                 .Concat(SetPageDeviceCommand(ticket))
-                 .Concat(new string[]
-                {
-                    "-f",
-                    jobfilename
-                }).ToArray();
-
-                MemoryStream outstream = new MemoryStream();
-                MemoryStream errstream = new MemoryStream();
-                MemoryStream instream = new MemoryStream(new byte[0]);
-
-                int exitcode = RunCommandAsUser(username, args, instream, outstream, errstream);
-
-                string outstr = Encoding.UTF8.GetString(outstream.ToArray());
-                string errstr = Encoding.UTF8.GetString(errstream.ToArray());
-
-                if (exitcode != 0)
-                {
-                    Logger.Log(LogLevel.Warning, "Ghostscript returned code {0}\n\nOutput:\n{1}\n\nError:\n{2}", exitcode, outstr, errstr);
-                    throw new InvalidOperationException(String.Format("Ghostscript error {0}\n{1}", exitcode, errstr));
-                }
-            }
-            finally
+                "-dNOPAUSE",
+                "-dBATCH",
+                "-dNOSAFER",
+                "-c"
+            }.Concat(SetDeviceCommand(printername, jobname))
+                .Concat(SetPageDeviceCommand(ticket))
+                .Concat(new string[]
             {
-                if (jobfilename != null && File.Exists(jobfilename))
-                {
-                    File.Delete(jobfilename);
-                }
+                "-f",
+                datafile
+            }).ToArray();
+
+            MemoryStream outstream = new MemoryStream();
+            MemoryStream errstream = new MemoryStream();
+            MemoryStream instream = new MemoryStream(new byte[0]);
+
+            int exitcode = RunCommandAsUser(username, args, instream, outstream, errstream);
+
+            string outstr = Encoding.UTF8.GetString(outstream.ToArray());
+            string errstr = Encoding.UTF8.GetString(errstream.ToArray());
+
+            if (exitcode != 0)
+            {
+                Logger.Log(LogLevel.Warning, "Ghostscript returned code {0}\n\nOutput:\n{1}\n\nError:\n{2}", exitcode, outstr, errstr);
+                throw new InvalidOperationException(String.Format("Ghostscript error {0}\n{1}", exitcode, errstr));
             }
         }
 
@@ -431,8 +314,8 @@ namespace TSVCEO.CloudPrint.Printing
         public override void Print(CloudPrintJob job)
         {
             PrintTicket printTicket = job.GetPrintTicket();
-            Stream printDataStream = job.GetPrintDataStream();
-            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printDataStream);
+            string printDataFile = job.GetPrintDataFile();
+            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printDataFile);
         }
 
         #endregion
