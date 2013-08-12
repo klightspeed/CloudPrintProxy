@@ -26,11 +26,24 @@ namespace TSVCEO.CloudPrint.InfoServer.Filters
             var ctx = actionContext.ControllerContext;
             var ctl = ctx.Controller;
 
-            if (!IsAuthorized(actionContext))
+            try
             {
-                HandleUnauthorizedRequest(actionContext);
+                if (IsAuthorized(actionContext))
+                {
+                    base.OnActionExecuting(actionContext);
+                }
+                else
+                {
+                    HandleUnauthorizedRequest(actionContext);
+                }
             }
-            base.OnActionExecuting(actionContext);
+            catch (Exception ex)
+            {
+                actionContext.Response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent("Error: " + ex.ToString())
+                };
+            }
         }
 
         protected bool IsAuthorized(HttpActionContext actionContext)

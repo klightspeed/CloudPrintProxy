@@ -27,6 +27,7 @@ namespace TSVCEO.CloudPrint.InfoServer
                 "{controller}/{id}",
                 new { controller = "Home", id = RouteParameter.Optional }
             );
+            cfg.Filters.Add(new Filters.HandleErrorFilter());
             cfg.Filters.Add(new Filters.CookiesFilter());
             cfg.Filters.Add(new Filters.WindowsAuthorizationFilter());
             cfg.Filters.Add(new Filters.CloudPrintProxyFilter { PrintProxy = printproxy });

@@ -65,6 +65,7 @@ namespace TSVCEO.CloudPrint
         
         static Config()
         {
+            Directory.CreateDirectory(AppDataDir);
             ConfigFileMutex = new Mutex(false, "TCEOCloudPrintProxyConfigFileMutex");
             if (CloudPrintProxyID == null)
             {

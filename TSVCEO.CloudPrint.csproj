@@ -92,6 +92,7 @@
     <Compile Include="InfoServer\Controllers\RegisterController.cs" />
     <Compile Include="InfoServer\Controllers\ScriptsController.cs" />
     <Compile Include="InfoServer\Controllers\XHtmlController.cs" />
+    <Compile Include="InfoServer\Filters\HandleErrorFilter.cs" />
     <Compile Include="InfoServer\InfoServerExtensions.cs" />
     <Compile Include="InfoServer\Filters\CloudPrintProxyFilter.cs" />
     <Compile Include="InfoServer\Filters\CookiesFilter.cs" />
@@ -150,10 +151,7 @@
     <Content Include="Lib\System.Web.Http.WebHost.dll" />
     <Content Include="Lib\System.Web.Http.WebHost.xml" />
     <Content Include="Lib\System.Web.Http.xml" />
-    <Content Include="Lib\x64\SQLite.Interop.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Lib\x86\SQLite.Interop.dll">
+    <Content Include="SQLite.Interop.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
