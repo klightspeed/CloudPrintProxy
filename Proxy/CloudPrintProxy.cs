@@ -382,13 +382,11 @@ namespace TSVCEO.CloudPrint.Proxy
 
                     if (XMPP == null && PrintJobUpdateTimer == null)
                     {
+                        PrintJobUpdateTimer = new Timer((obj) => UpdateCloudPrintJobs(), null, PrintJobUpdateInterval, PrintJobUpdateInterval);
+
                         if (useXMPP)
                         {
                             RunXMPP();
-                        }
-                        else
-                        {
-                            PrintJobUpdateTimer = new Timer((obj) => UpdateCloudPrintJobs(), null, PrintJobUpdateInterval, PrintJobUpdateInterval);
                         }
                     }
 

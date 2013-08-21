@@ -39,3 +39,7 @@ Ankh.NoLoad
 # Office Temp Files
 ~$*
 
+# Other junk files
+*~
+.*.sw?
+*.tmp
