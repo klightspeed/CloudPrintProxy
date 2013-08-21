@@ -16,7 +16,7 @@ To use the program:
 
 If you haven't registered the print proxy on this print server:
 
- * In a web browser, go to http://<hostname>:12387/
+ * In a web browser, go to http://__hostname__:12387/
  * Log in as a domain user (e.g. cedt-admin)
  * Click the "Register the print proxy" link
  * Click the "Register the Proxy" button
@@ -30,6 +30,6 @@ If you haven't registered the print proxy on this print server:
 
 For a user to have their print jobs print:
 
- * In a web browser, go to http://<hostname>:12387/
+ * In a web browser, go to http://__hostname__:12387/
  * Log in as the domain user
  * Their print jobs should now start printing.
