@@ -43,10 +43,17 @@ namespace TSVCEO.CloudPrint.Proxy
                         inputstream.CopyTo(datastream);
                     }
                 }
-
             }
-            File.SetCreationTime(this._PrintDataFileName, this.CreateTime);
-            File.SetLastWriteTime(this._PrintDataFileName, this.CreateTime);
+
+            try  /* #@$%^& thing gives an IO exception, but doesn't say what happened.  #@&^%$ */
+            {
+                File.SetCreationTime(this._PrintDataFileName, this.CreateTime);
+                File.SetLastWriteTime(this._PrintDataFileName, this.CreateTime);
+            }
+            catch
+            {
+            }
+
             Util.WindowsIdentityStore.SetFileAccess(this._PrintDataFileName, this.Username);
         }
 
@@ -63,8 +70,15 @@ namespace TSVCEO.CloudPrint.Proxy
 
             }
 
-            File.SetCreationTime(filename, this.CreateTime);
-            File.SetLastWriteTime(filename, this.CreateTime);
+            try  /* #@$%^& thing gives an IO exception, but doesn't say what happened.  #@&^%$ */
+            {
+                File.SetCreationTime(filename, this.CreateTime);
+                File.SetLastWriteTime(filename, this.CreateTime);
+            }
+            catch
+            {
+            }
+
             Util.WindowsIdentityStore.SetFileAccess(filename, this.Username);
         }
 
@@ -87,8 +101,16 @@ namespace TSVCEO.CloudPrint.Proxy
             );
 
             xdoc.Save(filename);
-            File.SetCreationTime(filename, this.CreateTime);
-            File.SetLastWriteTime(filename, this.UpdateTime);
+
+            try  /* #@$%^& thing gives an IO exception, but doesn't say what happened.  #@&^%$ */
+            {
+                File.SetCreationTime(filename, this.CreateTime);
+                File.SetLastWriteTime(filename, this.UpdateTime);
+            }
+            catch
+            {
+            }
+
             Util.WindowsIdentityStore.SetFileAccess(filename, this.Username);
         }
 
@@ -100,8 +122,16 @@ namespace TSVCEO.CloudPrint.Proxy
             {
                 Util.JsonHelper.WriteJson(new StreamWriter(jobfile, Encoding.UTF8), this._JobAttributes);
             }
-            File.SetCreationTime(filename, this.CreateTime);
-            File.SetLastWriteTime(filename, this.CreateTime);
+
+            try  /* #@$%^& thing gives an IO exception, but doesn't say what happened.  #@&^%$ */
+            {
+                File.SetCreationTime(filename, this.CreateTime);
+                File.SetLastWriteTime(filename, this.CreateTime);
+            }
+            catch
+            {
+            }
+
             Util.WindowsIdentityStore.SetFileAccess(filename, this.Username);
         }
 

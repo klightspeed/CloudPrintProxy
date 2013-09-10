@@ -30,6 +30,7 @@ namespace TSVCEO.CloudPrint.Proxy
         private static readonly TimeSpan PrintQueueUpdateInterval = new TimeSpan(1800 * TimeSpan.TicksPerSecond);
         private static readonly TimeSpan MinPrintJobUpdateInterval = new TimeSpan(30 * TimeSpan.TicksPerSecond);
         private static readonly TimeSpan PrintJobUpdateInterval = new TimeSpan(60 * TimeSpan.TicksPerSecond);
+        private static readonly TimeSpan XMPPReconnectInterval = new TimeSpan(300 * TimeSpan.TicksPerSecond);
 
         #endregion
 
@@ -40,6 +41,7 @@ namespace TSVCEO.CloudPrint.Proxy
         private XMPP XMPP { get; set; }
         private Timer PrintQueueUpdateTimer { get; set; }
         private Timer PrintJobUpdateTimer { get; set; }
+        private Timer XMPPReconnectTimer { get; set; }
         private IList<CloudPrinter> _Queues { get; set; }
         private ConcurrentDictionary<string, CloudPrintJob> _PrintJobs { get; set; }
         private DateTime PrintJobsLastUpdated { get; set; }
@@ -212,48 +214,57 @@ namespace TSVCEO.CloudPrint.Proxy
             {
                 PrintQueuesLastUpdated = DateTime.Now;
 
-                Dictionary<string, string> printerIds;
-
-                if (_Queues == null || _Queues.Count == 0)
+                try
                 {
-                    IEnumerable<dynamic> printers = HTTPHelper.PostCloudPrintUrlEncodedRequest(OAuthTicket, "list", new { proxy = Config.CloudPrintProxyID }).printers;
-                    printerIds = printers.ToDictionary(p => (string)p.name, p => (string)p.id);
-                }
-                else
-                {
-                    printerIds = _Queues.ToDictionary(p => p.Name, p => p.PrinterID);
-                }
 
-                List<CloudPrinter> queues = new List<CloudPrinter>();
+                    Dictionary<string, string> printerIds;
 
-                foreach (CloudPrinter queue in PrintJobProcessor.GetPrintQueues())
-                {
-                    if (!printerIds.ContainsKey(queue.Name))
+                    if (_Queues == null || _Queues.Count == 0)
                     {
-                        RegisterCloudPrinter(queue);
+                        IEnumerable<dynamic> printers = HTTPHelper.PostCloudPrintUrlEncodedRequest(OAuthTicket, "list", new { proxy = Config.CloudPrintProxyID }).printers;
+                        printerIds = printers.ToDictionary(p => (string)p.name, p => (string)p.id);
                     }
                     else
                     {
-                        queue.SetPrinterID(printerIds[queue.Name]);
-                        UpdateCloudPrinter(queue);
+                        printerIds = _Queues.ToDictionary(p => p.Name, p => p.PrinterID);
                     }
 
-                    queues.Add(queue);
-                }
+                    List<CloudPrinter> queues = new List<CloudPrinter>();
 
-                foreach (KeyValuePair<string, string> printer_kvp in printerIds)
-                {
-                    if (queues.Count(q => q.PrinterID == printer_kvp.Value) == 0)
+                    foreach (CloudPrinter queue in PrintJobProcessor.GetPrintQueues())
                     {
-                        DeleteCloudPrinter(printer_kvp.Value);
+                        if (!printerIds.ContainsKey(queue.Name))
+                        {
+                            RegisterCloudPrinter(queue);
+                        }
+                        else
+                        {
+                            queue.SetPrinterID(printerIds[queue.Name]);
+                            UpdateCloudPrinter(queue);
+                        }
+
+                        queues.Add(queue);
                     }
+
+                    foreach (KeyValuePair<string, string> printer_kvp in printerIds)
+                    {
+                        if (queues.Count(q => q.PrinterID == printer_kvp.Value) == 0)
+                        {
+                            DeleteCloudPrinter(printer_kvp.Value);
+                        }
+                    }
+
+                    _Queues = queues;
+
+                    UpdateCloudPrintJobs();
+
+                    return queues.AsEnumerable();
                 }
-
-                _Queues = queues;
-
-                UpdateCloudPrintJobs();
-
-                return queues.AsEnumerable();
+                catch (Exception ex)
+                {
+                    Logger.Log(LogLevel.Warning, "Caught exception while updating printer queues:\n{0}", ex.ToString());
+                    return _Queues.AsEnumerable();
+                }
             }
             else
             {
@@ -266,16 +277,25 @@ namespace TSVCEO.CloudPrint.Proxy
             if (PrintJobsLastUpdated + MinPrintJobUpdateInterval < DateTime.Now)
             {
                 PrintJobsLastUpdated = DateTime.Now;
-                List<CloudPrintJob> jobs = new List<CloudPrintJob>();
 
-                IEnumerable<CloudPrinter> printers = Queues;
-
-                foreach (CloudPrinter printer in printers)
+                try
                 {
-                    jobs.AddRange(UpdateCloudPrintJobs(printer));
-                }
+                    List<CloudPrintJob> jobs = new List<CloudPrintJob>();
 
-                return jobs;
+                    IEnumerable<CloudPrinter> printers = Queues;
+
+                    foreach (CloudPrinter printer in printers)
+                    {
+                        jobs.AddRange(UpdateCloudPrintJobs(printer));
+                    }
+
+                    return jobs;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log(LogLevel.Warning, "Caught exception while updating print jobs:\n{0}", ex.ToString());
+                    return _PrintJobs.Values;
+                }
             }
             else
             {
@@ -345,8 +365,14 @@ namespace TSVCEO.CloudPrint.Proxy
             }
             else
             {
-                throw new AggregateException(ex);
+                XMPPReconnectTimer = new Timer(new TimerCallback(XMPP_Reconnect), null, XMPPReconnectInterval, new TimeSpan(-1));
+                Logger.Log(LogLevel.Warning, "XMPP connection broken - exception:\n{0}", ex);
             }
+        }
+
+        private void XMPP_Reconnect(object state)
+        {
+            RunXMPP();
         }
 
         private void ProcessPush(XElement el, XMPP xmpp)
