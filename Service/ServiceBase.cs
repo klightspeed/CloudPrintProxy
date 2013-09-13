@@ -58,7 +58,7 @@ namespace TSVCEO.CloudPrint.Service
 
         public void Run(params string[] args)
         {
-            if (args.Length == 1 || args[0].Length >= 2)
+            if (args.Length == 1 && args[0].Length >= 2)
             {
                 if ("-install".StartsWith(args[0]))
                 {
