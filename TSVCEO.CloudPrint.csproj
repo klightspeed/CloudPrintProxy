@@ -126,6 +126,7 @@
     <Compile Include="Util\LogLevel.cs" />
     <Compile Include="Util\NtEventLogger.cs" />
     <Compile Include="Util\OAuthTicket.cs" />
+    <Compile Include="Util\ProcessHelper.cs" />
     <Compile Include="Proxy\XMPP.cs" />
     <Compile Include="Service\GoogleCloudPrintProxyService.cs">
       <SubType>Component</SubType>
