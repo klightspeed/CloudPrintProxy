@@ -187,7 +187,7 @@ namespace TSVCEO.CloudPrint.Printing
             yield return "setpagedevice";
         }
 
-        protected IEnumerable<string> SetDeviceCommand(string printername, string jobname)
+        protected IEnumerable<string> SetDeviceCommand(string printername, string jobname, string driver)
         {
             yield return "mark";
             yield return "/NoCancel";
@@ -199,7 +199,7 @@ namespace TSVCEO.CloudPrint.Printing
             yield return "/DocumentName";
             yield return EscapePostscriptString(jobname);
             yield return ">>";
-            yield return "(mswinpr2)";
+            yield return "(" + driver + ")";
             yield return "finddevice";
             yield return "putdeviceprops";
             yield return "setdevice";
@@ -272,7 +272,7 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, string datafile)
+        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, string datafile, string driver)
         {
             SetupUserPrinter(username, printername);
             string[] setup = SetPageDeviceCommand(ticket).ToArray();
@@ -283,7 +283,7 @@ namespace TSVCEO.CloudPrint.Printing
                 "-dBATCH",
                 "-dNOSAFER",
                 "-c"
-            }.Concat(SetDeviceCommand(printername, jobname))
+            }.Concat(SetDeviceCommand(printername, jobname, driver))
                 .Concat(SetPageDeviceCommand(ticket))
                 .Concat(new string[]
             {
@@ -315,7 +315,7 @@ namespace TSVCEO.CloudPrint.Printing
         {
             PrintTicket printTicket = job.GetPrintTicket();
             string printDataFile = job.GetPrintDataFile();
-            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printDataFile);
+            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printDataFile, Config.GhostscriptPrinterDrivers[job.Printer.Name] ?? "mswinpr2");
         }
 
         #endregion

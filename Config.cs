@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using System.Reflection;
 using System.IO;
 using System.Threading;
+using System.Collections.Specialized;
 
 namespace TSVCEO.CloudPrint
 {
@@ -46,8 +47,10 @@ namespace TSVCEO.CloudPrint
         public static string CredentialDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["CredentialDatabaseFilename"]); } }
         public static string SessionDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["SessionDatabaseFilename"]); } }
 
-        private static string ConfigFileName { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["VolatileConfigFilename"]); } }
+        public static NameValueCollection GhostscriptPrinterDrivers { get { return ConfigurationManager.GetSection("ghostscriptPrinterDrivers") as NameValueCollection; } }
         
+        private static string ConfigFileName { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["VolatileConfigFilename"]); } }
+
         #endregion
 
         #region dynamic settings
