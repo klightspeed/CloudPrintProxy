@@ -12,5 +12,6 @@ namespace TSVCEO.CloudPrint
         void AddJob(CloudPrintJob job);
         void AddJobs(IEnumerable<CloudPrintJob> jobs);
         IEnumerable<CloudPrinter> GetPrintQueues();
+        IEnumerable<CloudPrintJob> GetQueuedJobs();
     }
 }

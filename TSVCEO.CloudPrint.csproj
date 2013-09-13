@@ -91,6 +91,7 @@
     <Compile Include="InfoServer\Controllers\HomeController.cs" />
     <Compile Include="InfoServer\Controllers\RegisterController.cs" />
     <Compile Include="InfoServer\Controllers\ScriptsController.cs" />
+    <Compile Include="InfoServer\Controllers\StatusController.cs" />
     <Compile Include="InfoServer\Controllers\XHtmlController.cs" />
     <Compile Include="InfoServer\Filters\HandleErrorFilter.cs" />
     <Compile Include="InfoServer\InfoServerExtensions.cs" />

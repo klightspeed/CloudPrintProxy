@@ -570,6 +570,12 @@ namespace TSVCEO.CloudPrint.Proxy
             byte[] data = HTTPHelper.GetResponseData(HTTPHelper.CreateRequest(OAuthTicket, job.FileUrl));
             return new MemoryStream(data);
         }
+
+        public IEnumerable<CloudPrintJob> GetQueuedJobs()
+        {
+            return this.PrintJobProcessor.GetQueuedJobs();
+        }
+
         #endregion
     }
 }

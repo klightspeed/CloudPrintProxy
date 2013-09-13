@@ -227,6 +227,11 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
+        public IEnumerable<CloudPrintJob> GetQueuedJobs()
+        {
+            return DeferredJobQueue.AsEnumerable().Union(PrintJobQueue.AsEnumerable());
+        }
+
         #endregion
     }
 }
