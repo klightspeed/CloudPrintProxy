@@ -45,6 +45,7 @@ namespace TSVCEO.CloudPrint.Proxy
                 }
             }
 
+#if DEBUG
             try  /* #@$%^& thing gives an IO exception, but doesn't say what happened.  #@&^%$ */
             {
                 File.SetCreationTime(this._PrintDataFileName, this.CreateTime);
@@ -55,8 +56,10 @@ namespace TSVCEO.CloudPrint.Proxy
             }
 
             Util.WindowsIdentityStore.SetFileAccess(this._PrintDataFileName, this.Username);
+#endif
         }
 
+#if DEBUG
         private void WriteJobTicket()
         {
             string filename = _PrintDataBasename + ".ticket.xml";
@@ -116,7 +119,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
         private void WriteJobJson()
         {
-            string filename = _PrintDataBasename + ".job.xml";
+            string filename = _PrintDataBasename + ".job.json";
 
             using (Stream jobfile = File.Create(filename))
             {
@@ -134,6 +137,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
             Util.WindowsIdentityStore.SetFileAccess(filename, this.Username);
         }
+#endif
 
         public override void SetStatus(CloudPrintJobStatus status)
         {
@@ -144,7 +148,9 @@ namespace TSVCEO.CloudPrint.Proxy
 
             if (status == CloudPrintJobStatus.DONE)
             {
+#if !DEBUG
                 File.Delete(_PrintDataFileName);
+#endif
             }
         }
 
@@ -178,9 +184,11 @@ namespace TSVCEO.CloudPrint.Proxy
             Directory.CreateDirectory(jobdirname);
 
             WriteJobData();
+#if DEBUG
             WriteJobTicket();
             WriteJobXml();
             WriteJobJson();
+#endif
         }
     }
 }
