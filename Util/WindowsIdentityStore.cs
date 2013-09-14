@@ -501,6 +501,13 @@ namespace TSVCEO.CloudPrint.Util
             return ProcessHelper.RunProcessAsUser(username, Domain, GetUserCredential(username), stdin, stdout, stderr, exename, args);
         }
 
+        public static int RunProcessAsUser(string username, TextReader stdin, TextWriter stdout, TextWriter stderr, string exename, string[] args)
+        {
+            AddUserToCurrentWindowStationDesktop(username);
+
+            return ProcessHelper.RunProcessAsUser(username, Domain, GetUserCredential(username), stdin, stdout, stderr, exename, args);
+        }
+
         public static WindowsIdentity Login(string username, SecureString password)
         {
             IntPtr token;
