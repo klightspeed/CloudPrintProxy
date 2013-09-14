@@ -56,29 +56,29 @@ namespace TSVCEO.CloudPrint.Service
 
         public abstract void RunStandalone(params string[] args);
 
-        public void Run(params string[] args)
+        public int Run(params string[] args)
         {
             if (args.Length == 1 && args[0].Length >= 2)
             {
                 if ("-install".StartsWith(args[0]))
                 {
                     Install();
-                    return;
+                    return 0;
                 }
                 else if ("-uninstall".StartsWith(args[0]))
                 {
                     Uninstall();
-                    return;
+                    return 0;
                 }
                 else if ("-console".StartsWith(args[0]))
                 {
                     RunStandalone();
-                    return;
+                    return 0;
                 }
                 else if ("-service".StartsWith(args[0]))
                 {
                     RunService();
-                    return;
+                    return 0;
                 }
             }
 
@@ -87,6 +87,8 @@ namespace TSVCEO.CloudPrint.Service
             Console.WriteLine("-i{nstall}      Install service");
             Console.WriteLine("-u{ninstall}    Uninstall service");
             Console.WriteLine("-c{onsole}      Run standalone");
+
+            return 1;
         }
 
         private bool IsOverriden(MethodInfo method)

@@ -283,29 +283,26 @@ namespace TSVCEO.CloudPrint.Printing
             SetupUserPrinter(username, printername);
             string[] pagesetup = SetPageDeviceCommand(ticket).ToArray();
             string[] devsetup;
+            string[] extraargs;
 
             if (driver == null)
             {
                 devsetup = SetDeviceCommand("%printer%" + printername, jobname, "mswinpr2").ToArray();
+                extraargs = new string[] { "-dNOSAFER" };
             }
             else
             {
-                devsetup = SetDeviceCommand(tempfile, jobname, driver).ToArray();
+                devsetup = new string[] { };
+                extraargs = new string[] { "-sDEVICE=" + driver, "-sOutputFile=" + tempfile };
             }
 
-            string[] args = new string[]
-            {
-                "-dNOPAUSE",
-                "-dBATCH",
-                "-dNOSAFER",
-                "-c"
-            }.Concat(devsetup)
+            string[] args = new string[] { "-dNOPAUSE", "-dBATCH" }
+                .Concat(extraargs)
+                .Concat(new string[] { "-c" })
+                .Concat(devsetup)
                 .Concat(pagesetup)
-                .Concat(new string[]
-            {
-                "-f",
-                datafile
-            }).ToArray();
+                .Concat(new string[] { "-f", datafile })
+                .ToArray();
 
             MemoryStream outstream = new MemoryStream();
             MemoryStream errstream = new MemoryStream();
@@ -329,6 +326,19 @@ namespace TSVCEO.CloudPrint.Printing
                 Logger.Log(LogLevel.Warning, "Ghostscript returned code {0}\n\nOutput:\n{1}\n\nError:\n{2}", exitcode, outstr, errstr);
                 throw new InvalidOperationException(String.Format("Ghostscript error {0}\n{1}", exitcode, errstr));
             }
+
+            if (driver != null)
+            {
+                WindowsRawPrintJobInfo jobinfo = new WindowsRawPrintJobInfo
+                {
+                    JobName = jobname,
+                    PrinterName = printername,
+                    UserName = username,
+                    RawPrintData = File.ReadAllBytes(tempfile)
+                };
+
+                WindowsRawPrinter.PrintRawAsUser(jobinfo);
+            }
         }
 
         #endregion
@@ -345,7 +355,9 @@ namespace TSVCEO.CloudPrint.Printing
 
             if (File.Exists(printOutputFile))
             {
+#if !DEBUG
                 File.Delete(printOutputFile);
+#endif
             }
         }
 
