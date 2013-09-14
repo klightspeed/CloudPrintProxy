@@ -71,12 +71,6 @@ namespace TSVCEO.CloudPrint.Printing
             return WindowsIdentityStore.RunProcessAsUser(username, stdin, stdout, stderr, gsexepath, args);
         }
 
-        protected virtual int RunCommand(string[] args, Stream stdin, Stream stdout, Stream stderr)
-        {
-            string gsexepath = GetGhostscriptPath("gswin32c.exe");
-            return ProcessHelper.RunProcess(stdin, stdout, stderr, gsexepath, args);
-        }
-
         protected string EscapePostscriptString(string str)
         {
             StringBuilder sb = new StringBuilder();
@@ -193,19 +187,19 @@ namespace TSVCEO.CloudPrint.Printing
             yield return "setpagedevice";
         }
 
-        protected IEnumerable<string> SetDeviceCommand(string outputfilename, string jobname, string driver)
+        protected IEnumerable<string> SetDeviceCommand(string printername, string jobname, string driver)
         {
             yield return "mark";
             yield return "/NoCancel";
             yield return "true";
             yield return "/OutputFile";
-            yield return EscapePostscriptString(outputfilename);
+            yield return EscapePostscriptString("%printer%" + printername);
             yield return "/UserSettings";
             yield return "<<";
             yield return "/DocumentName";
             yield return EscapePostscriptString(jobname);
             yield return ">>";
-            yield return EscapePostscriptString(driver);
+            yield return "(" + driver + ")";
             yield return "finddevice";
             yield return "putdeviceprops";
             yield return "setdevice";
@@ -278,20 +272,10 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        protected void PrintData(string username, PrintTicket ticket, string printername, string tempfile, string jobname, string datafile, string driver)
+        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, string datafile, string driver)
         {
             SetupUserPrinter(username, printername);
-            string[] pagesetup = SetPageDeviceCommand(ticket).ToArray();
-            string[] devsetup;
-
-            if (driver == null)
-            {
-                devsetup = SetDeviceCommand("%printer%" + printername, jobname, "mswinpr2").ToArray();
-            }
-            else
-            {
-                devsetup = SetDeviceCommand(tempfile, jobname, driver).ToArray();
-            }
+            string[] setup = SetPageDeviceCommand(ticket).ToArray();
 
             string[] args = new string[]
             {
@@ -299,8 +283,8 @@ namespace TSVCEO.CloudPrint.Printing
                 "-dBATCH",
                 "-dNOSAFER",
                 "-c"
-            }.Concat(devsetup)
-                .Concat(pagesetup)
+            }.Concat(SetDeviceCommand(printername, jobname, driver))
+                .Concat(SetPageDeviceCommand(ticket))
                 .Concat(new string[]
             {
                 "-f",
@@ -311,15 +295,7 @@ namespace TSVCEO.CloudPrint.Printing
             MemoryStream errstream = new MemoryStream();
             MemoryStream instream = new MemoryStream(new byte[0]);
 
-            int exitcode;
-            if (driver == null)
-            {
-                exitcode = RunCommandAsUser(username, args, instream, outstream, errstream);
-            }
-            else
-            {
-                exitcode = RunCommand(args, instream, outstream, errstream);
-            }
+            int exitcode = RunCommandAsUser(username, args, instream, outstream, errstream);
 
             string outstr = Encoding.UTF8.GetString(outstream.ToArray());
             string errstr = Encoding.UTF8.GetString(errstream.ToArray());
@@ -339,14 +315,7 @@ namespace TSVCEO.CloudPrint.Printing
         {
             PrintTicket printTicket = job.GetPrintTicket();
             string printDataFile = job.GetPrintDataFile();
-            string printOutputFile = printDataFile + ".raw";
-            string printerDriver = Config.GhostscriptPrinterDrivers[job.Printer.Name];
-            PrintData(job.Username, printTicket, job.Printer.Name, printOutputFile, job.JobTitle, printDataFile, printerDriver);
-
-            if (File.Exists(printOutputFile))
-            {
-                File.Delete(printOutputFile);
-            }
+            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printDataFile, Config.GhostscriptPrinterDrivers[job.Printer.Name] ?? "mswinpr2");
         }
 
         #endregion
