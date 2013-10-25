@@ -24,15 +24,64 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
 
         protected HttpResponseMessage Page(params object[] elements)
         {
-            return Html(
-                Head("Cloud Print Server"),
-                Body(
-                    H1("Cloud Print Server"),
-                    new XElement("div", "Welcome to the Cloud Print Server, " + Session["username"]),
-                    elements
-                )
-            );
-
+            try
+            {
+                return Html(
+                    Head("Cloud Print Server"),
+                    Body(
+                        H1("Cloud Print Server"),
+                        new XElement("p", "Welcome to the Cloud Print Server, " + Session["username"]),
+                        elements,
+                        new XElement("p",
+                            "Please go to ",
+                            new XElement("a",
+                                new XAttribute("href", "http://google.com/cloudprint"),
+                                "Google Cloud Print"
+                            ),
+                            " to manage your printers."
+                        ),
+                        this.PrintProxy.Queues == null ? null : new XElement("dl",
+                            new XElement("dt", "This server is sharing the following printers:"),
+                            new XElement("dd",
+                                new XElement("ul",
+                                    this.PrintProxy.Queues.Select(q =>
+                                        new XElement("li",
+                                            new XElement("a",
+                                                new XAttribute("href", "https://www.google.com/cloudprint#printer/id/" + q.PrinterID),
+                                                q.Name
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            new XElement("dt", "This server has received the following print jobs:"),
+                            this.PrintProxy.PrintJobs == null ? null : new XElement("dd",
+                                new XElement("ul",
+                                    this.PrintProxy.PrintJobs.Where(j => j.Username == Session["username"]).Select(j =>
+                                        new XElement("li",
+                                            new XElement("dl",
+                                                new XElement("dt", j.JobTitle),
+                                                new XElement("dd", "Status: " + j.Status.ToString()),
+                                                new XElement("dd", "Last Updated: " + j.UpdateTime.ToShortDateString())
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                return Html(
+                    Head("Cloud Print Server"),
+                    Body(
+                        H1("Cloud Print Server"),
+                        new XElement("pre", "Error: " + ex.ToString())
+                    )
+                );
+            }
         }
 
         public HttpResponseMessage Get()
