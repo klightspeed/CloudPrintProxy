@@ -43,3 +43,6 @@ Ankh.NoLoad
 *~
 .*.sw?
 *.tmp
+
+# NuGet Package binaries (Downloaded by NuGet)
+packages/
