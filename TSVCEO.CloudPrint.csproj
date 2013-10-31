@@ -101,6 +101,7 @@
     <Compile Include="InfoServer\CloudPrintInfoServer.cs" />
     <Compile Include="InfoServer\Models\RegisterModel.cs" />
     <Compile Include="IPrintJobProcessor.cs" />
+    <Compile Include="PrinterConfiguration.cs" />
     <Compile Include="Printing\Ghostscript.cs" />
     <Compile Include="Printing\JobPrinter.cs" />
     <Compile Include="Printing\WindowsPrintJobProcessor.cs" />

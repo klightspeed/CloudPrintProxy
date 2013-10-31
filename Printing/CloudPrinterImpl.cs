@@ -11,6 +11,9 @@ namespace TSVCEO.CloudPrint.Printing
 {
     public class CloudPrinterImpl : CloudPrinter
     {
+        protected Type JobPrinterType { get; set; }
+        protected PrinterConfiguration PrinterConfiguration { get; set; }
+
         public override string Status { get { return new LocalPrintServer().GetPrintQueue(Name).QueueStatus.ToString(); } }
 
         protected static string GetMD5Hash(byte[] data)
@@ -33,6 +36,16 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
+        public override Type GetJobPrinterType()
+        {
+            return this.JobPrinterType;
+        }
+
+        public override PrinterConfiguration GetPrinterConfiguration()
+        {
+            return this.PrinterConfiguration;
+        }
+
         public CloudPrinterImpl(PrintQueue queue)
         {
             PrintTicket defaults = queue.DefaultPrintTicket.Clone();
@@ -44,6 +57,23 @@ namespace TSVCEO.CloudPrint.Printing
             this.Capabilities = XDocument.Load(queue.GetPrintCapabilitiesAsXml()).ToString();
             this.Defaults = new StreamReader(defaults.GetXmlStream(), Encoding.UTF8, false).ReadToEnd();
             this.CapsHash = GetMD5Hash(Encoding.UTF8.GetBytes(Capabilities));
+
+            PrinterConfigurationSection printerconfigs = Config.PrinterConfigurationSection;
+
+            if (printerconfigs != null)
+            {
+                this.PrinterConfiguration = printerconfigs.Printers.OfType<PrinterConfiguration>().SingleOrDefault(p => p.Name == this.Name);
+
+                if (this.PrinterConfiguration != null)
+                {
+                    this.JobPrinterType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes().Where(t => t.Name == this.Name && typeof(JobPrinter).IsAssignableFrom(t))).SingleOrDefault();
+                }
+            }
+
+            if (this.JobPrinterType == null)
+            {
+                this.JobPrinterType = typeof(Ghostscript);
+            }
         }
     }
 }

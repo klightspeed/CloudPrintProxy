@@ -12,8 +12,7 @@ using System.IO;
 
 namespace TSVCEO.CloudPrint.Printing
 {
-    public class WindowsPrintJobProcessor<T> : IPrintJobProcessor
-        where T: JobPrinter, new()
+    public class WindowsPrintJobProcessor : IPrintJobProcessor
     {
         private const int RequeueTime = 15000;
 
@@ -107,9 +106,9 @@ namespace TSVCEO.CloudPrint.Printing
                 try
                 {
                     Logger.Log(LogLevel.Info, "Starting job {0}", job.JobID);
-                    using (JobPrinter pj = new T())
+                    using (JobPrinter printer = Activator.CreateInstance(job.Printer.GetJobPrinterType()) as JobPrinter)
                     {
-                        pj.Print(job);
+                        printer.Print(job);
                     }
                     Logger.Log(LogLevel.Info, "Job {0} Finished", job.JobID);
                     job.SetStatus(CloudPrintJobStatus.DONE);

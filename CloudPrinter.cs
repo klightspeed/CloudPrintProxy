@@ -18,6 +18,8 @@ namespace TSVCEO.CloudPrint
         [DataMember] public virtual string CapsHash { get; protected set; }
         [DataMember] public virtual string PrinterID { get; protected set; }
 
+        public virtual PrinterConfiguration GetPrinterConfiguration() { throw new NotImplementedException(); }
+        public virtual Type GetJobPrinterType() { throw new NotImplementedException(); }
         public virtual void SetPrinterID(string id) { throw new NotImplementedException(); }
     }
 }
