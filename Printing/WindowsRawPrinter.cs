@@ -28,6 +28,9 @@ namespace TSVCEO.CloudPrint.Printing
         public string JobName { get; set; }
         public string UserName { get; set; }
         public byte[] RawPrintData { get; set; }
+        public byte[] Prologue { get; set; }
+        public byte[][] PageData { get; set; }
+        public byte[] Epilogue { get; set; }
     }
 
     public class WindowsRawPrinter
@@ -123,6 +126,13 @@ namespace TSVCEO.CloudPrint.Printing
             public uint JobId;
         }
 
+        public struct DOC_INFO_1
+        {
+            public string DocName;
+            public string OutputFile;
+            public string Datatype;
+        }
+
         public struct JOB_INFO_2
         {
             public uint JobId;
@@ -178,31 +188,37 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        [DllImport("winspool.drv")]
+        [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool OpenPrinter(string pPrinterName, out IntPtr phPrinter, ref PRINTER_DEFAULTS pPrinterDefaults);
 
-        [DllImport("winspool.drv")]
+        [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool ClosePrinter(IntPtr hPrinter);
-        
-        [DllImport("winspool.drv")]
+
+        [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool AddJob(IntPtr hPrinter, uint Level, IntPtr pData, uint cbBuf, out uint pcbNeeded);
 
-        [DllImport("winspool.drv")]
+        [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool GetJob(IntPtr hPrinter, uint JobId, uint Level, IntPtr pJob, uint cbBuf, out uint pcbNeeded);
 
-        [DllImport("winspool.drv")]
+        [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool SetJob(IntPtr hPrinter, uint JobId, uint Level, IntPtr pJob, uint Command);
 
-        [DllImport("winspool.drv")]
+        [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool ScheduleJob(IntPtr hPrinter, uint JobId);
 
-        [DllImport("winspool.drv")]
-        private static extern uint StartDocPrinter(IntPtr hPrinter, uint Level, IntPtr pDocInfo);
+        [DllImport("winspool.drv", SetLastError = true)]
+        private static extern uint StartDocPrinter(IntPtr hPrinter, uint Level, ref DOC_INFO_1 pDocInfo);
 
-        [DllImport("winspool.drv")]
-        private static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBuf, uint cbBuf, out uint pcWritten);
+        [DllImport("winspool.drv", SetLastError = true)]
+        private static extern bool StartPagePrinter(IntPtr hPrinter);
 
-        [DllImport("winspool.drv")]
+        [DllImport("winspool.drv", SetLastError = true)]
+        private static extern bool WritePrinter(IntPtr hPrinter, [MarshalAs(UnmanagedType.LPArray)] byte[] pBuf, uint cbBuf, out uint pcWritten);
+
+        [DllImport("winspool.drv", SetLastError = true)]
+        private static extern bool EndPagePrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool EndDocPrinter(IntPtr hPrinter);
 
         private static void Serialize(TextWriter writer, object graph)
@@ -211,17 +227,56 @@ namespace TSVCEO.CloudPrint.Printing
             using (MemoryStream memstream = new MemoryStream())
             {
                 formatter.Serialize(memstream, graph);
-                writer.Write(Convert.ToBase64String(memstream.ToArray()));
+                string base64 = Convert.ToBase64String(memstream.ToArray());
+                writer.Write(base64);
+                writer.Write("\n====\n");
             }
+        }
+
+        private static string ReadBase64(TextReader reader)
+        {
+            StringBuilder sb = new StringBuilder();
+            while (true)
+            {
+                string line = reader.ReadLine();
+                if (line == "====")
+                {
+                    break;
+                }
+
+                sb.Append(line);
+            }
+
+            return sb.ToString();
         }
 
         private static object Deserialize(TextReader reader)
         {
             BinaryFormatter formatter = new BinaryFormatter(null, new StreamingContext(StreamingContextStates.CrossProcess));
-            byte[] data = Convert.FromBase64String(reader.ReadToEnd());
+            string base64 = ReadBase64(reader);
+            byte[] data = Convert.FromBase64String(base64);
             using (MemoryStream memstream = new MemoryStream(data))
             {
                 return formatter.Deserialize(memstream);
+            }
+        }
+
+        private static void WritePrinter(IntPtr hPrinter, byte[] data)
+        {
+            int i = 0;
+
+            while (i < data.Length)
+            {
+                byte[] _data = new byte[32768];
+                uint len = (uint)Math.Min(data.Length - i, _data.Length);
+                Array.Copy(data, i, _data, 0, len);
+
+                if (!WritePrinter(hPrinter, _data, len, out len))
+                {
+                    Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+                }
+
+                i += (int)len;
             }
         }
         
@@ -230,20 +285,58 @@ namespace TSVCEO.CloudPrint.Printing
             IntPtr hPrinter;
             PRINTER_DEFAULTS defaults = new PRINTER_DEFAULTS
             {
-                DesiredAccess = PRINTER_ACCESS_MASK.PRINTER_ALL_ACCESS,
+                DesiredAccess = PRINTER_ACCESS_MASK.PRINTER_ACCESS_USE,
                 pDatatype = "RAW"
             };
 
             if (OpenPrinter(jobinfo.PrinterName, out hPrinter, ref defaults))
             {
+                DOC_INFO_1 docInfo = new DOC_INFO_1 { Datatype = "RAW", DocName = jobinfo.JobName, OutputFile = null };
+                uint jobid = StartDocPrinter(hPrinter, 1, ref docInfo);
+
+                if (jobid < 0)
+                {
+                    Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+                }
+
+
+                if (jobinfo.RawPrintData != null)
+                {
+                    WritePrinter(hPrinter, jobinfo.RawPrintData);
+                }
+
+                if (jobinfo.Prologue != null)
+                {
+                    WritePrinter(hPrinter, jobinfo.Prologue);
+                }
+
+                if (jobinfo.PageData != null)
+                {
+                    foreach (byte[] pagedata in jobinfo.PageData)
+                    {
+                        StartPagePrinter(hPrinter);
+                        WritePrinter(hPrinter, pagedata);
+                        EndPagePrinter(hPrinter);
+                    }
+                }
+
+                if (jobinfo.Epilogue != null)
+                {
+                    WritePrinter(hPrinter, jobinfo.Epilogue);
+                }
+
+                if (!EndDocPrinter(hPrinter))
+                {
+                    Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+                }
+
+                /*
                 IntPtr addjobinfobuf = Marshal.AllocHGlobal(32768);
                 uint cbneeded;
 
                 if (AddJob(hPrinter, 1, addjobinfobuf, 32768, out cbneeded))
                 {
                     ADDJOB_INFO_1 addjobinfo = (ADDJOB_INFO_1)Marshal.PtrToStructure(addjobinfobuf, typeof(ADDJOB_INFO_1));
-
-                    File.WriteAllBytes(addjobinfo.Path, jobinfo.RawPrintData);
 
                     IntPtr spooljobinfobuf = Marshal.AllocHGlobal(1048576);
                     GetJob(hPrinter, addjobinfo.JobId, 2, spooljobinfobuf, 1048576, out cbneeded);
@@ -262,8 +355,11 @@ namespace TSVCEO.CloudPrint.Printing
                     Marshal.DestroyStructure(spooljobinfobuf, typeof(JOB_INFO_2));
                     Marshal.FreeHGlobal(spooljobinfobuf);
 
+                    File.WriteAllBytes(addjobinfo.Path, jobinfo.RawPrintData);
+
                     ScheduleJob(hPrinter, addjobinfo.JobId);
                 }
+                 */
 
                 ClosePrinter(hPrinter);
             }
@@ -299,12 +395,16 @@ namespace TSVCEO.CloudPrint.Printing
                 TextWriter stdout_writer = new StreamWriter(stdout);
                 TextWriter stderr_writer = new StreamWriter(stderr);
 
-                int retcode = WindowsIdentityStore.RunProcessAsUser(jobinfo.UserName, stdin_reader, stdout_writer, stderr_writer, Assembly.GetExecutingAssembly().GetName().CodeBase, new string[] { "-print" });
+                int retcode = WindowsIdentityStore.RunProcessAsUser(jobinfo.UserName, stdin_reader, stdout_writer, stderr_writer, Assembly.GetExecutingAssembly().Location, new string[] { "-print" });
 
-                if (retcode != null)
+                stdout_writer.Flush();
+                stderr_writer.Flush();
+
+                if (retcode != 0)
                 {
                     stderr.Position = 0;
                     TextReader stderr_reader = new StreamReader(stderr);
+                    Logger.Log(LogLevel.Info, "Error printing file:\n{0}", System.Text.Encoding.ASCII.GetString(stderr.ToArray()));
                     throw new WindowsRawPrinterException((Exception)Deserialize(stderr_reader));
                 }
             }

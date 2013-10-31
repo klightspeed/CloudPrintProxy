@@ -11,7 +11,7 @@ namespace TSVCEO.CloudPrint
         /// </summary>
         static int Main(string[] args)
         {
-            if (args.Length == 2 && args[0] == "-print")
+            if (args.Length == 1 && args[0] == "-print")
             {
                 return WindowsRawPrinter.PrintRaw_Child(Console.In, Console.Out, Console.Error);
             }
