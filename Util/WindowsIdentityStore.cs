@@ -538,6 +538,21 @@ namespace TSVCEO.CloudPrint.Util
             }
         }
 
+        public static bool IsUserAdmin(string username)
+        {
+            WindowsIdentity ident = GetWindowsIdentity(username);
+            IdentityReferenceCollection groups = ident.Groups;
+            foreach (IdentityReference group in groups)
+            {
+                if (group.Value == "S-1-5-32-544") /* BUILTIN\Administrators */
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         #endregion
     }
 }

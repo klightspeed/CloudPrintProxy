@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Web.Http;
 using TSVCEO.CloudPrint.Proxy;
+using TSVCEO.CloudPrint.Util;
 using TSVCEO.CloudPrint.InfoServer.Models;
 using System.Xml.Linq;
 
@@ -130,25 +131,36 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
         [HttpGet]
         public HttpResponseMessage Get()
         {
-            if (!PrintProxy.IsRegistered)
+            bool isadmin = WindowsIdentityStore.IsUserAdmin(Session["username"]);
+
+            if (isadmin)
             {
-                return Page(
-                    new XElement("div", GetRegistrationRequestForm())
-                );
+                if (!PrintProxy.IsRegistered)
+                {
+                    return Page(
+                        new XElement("div", GetRegistrationRequestForm())
+                    );
+                }
+                else
+                {
+                    return Page(
+                        new XElement("div", "This print proxy is already registered."),
+                        new XElement("div", new XElement("a", new XAttribute("href", Url.Route("default", new { controller = "Home" })), "Return to Print Proxy information page"))
+                    );
+                }
             }
             else
             {
-                return Page(
-                    new XElement("div", "This print proxy is already registered."),
-                    new XElement("div", new XElement("a", new XAttribute("href", Url.Route("default", new { controller = "Home" })), "Return to Print Proxy information page"))
-                );
+                return Forbidden();
             }
         }
 
         [HttpPost]
         public HttpResponseMessage Post(FormDataCollection form)
         {
-            if (!PrintProxy.IsRegistered)
+            bool isadmin = WindowsIdentityStore.IsUserAdmin(Session["username"]);
+
+            if (isadmin && !PrintProxy.IsRegistered)
             {
                 switch (form.Get("Action"))
                 {

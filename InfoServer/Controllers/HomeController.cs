@@ -8,6 +8,7 @@ using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Xml.Linq;
 using TSVCEO.CloudPrint.Proxy;
+using TSVCEO.CloudPrint.Util;
 using TSVCEO.CloudPrint.InfoServer.Filters;
 
 namespace TSVCEO.CloudPrint.InfoServer.Controllers
@@ -26,6 +27,8 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
         {
             try
             {
+                bool isadmin = WindowsIdentityStore.IsUserAdmin(Session["username"]);
+
                 return Html(
                     Head("Cloud Print Server"),
                     Body(
@@ -57,10 +60,11 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                             new XElement("dt", "This server has received the following print jobs:"),
                             this.PrintProxy.PrintJobs == null ? null : new XElement("dd",
                                 new XElement("ul",
-                                    this.PrintProxy.PrintJobs.Where(j => j.Username == Session["username"]).Select(j =>
+                                    this.PrintProxy.PrintJobs.Where(j => isadmin || j.Username == Session["username"]).Select(j =>
                                         new XElement("li",
                                             new XElement("dl",
                                                 new XElement("dt", j.JobTitle),
+                                                isadmin ? new XElement("dd", "Username: " + j.Username) : null,
                                                 new XElement("dd", "Status: " + j.Status.ToString()),
                                                 new XElement("dd", "Last Updated: " + j.UpdateTime.ToShortDateString())
                                             )
@@ -86,11 +90,13 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
 
         public HttpResponseMessage Get()
         {
+            bool isadmin = WindowsIdentityStore.IsUserAdmin(Session["username"]);
+
             if (!PrintProxy.IsRegistered)
             {
                 return Page(
                     new XElement("div", "This cloud print proxy is not yet registered"),
-                    new XElement("div", new XElement("a", new XAttribute("href", Url.Route("default", new { controller = "Register" })), "Register the print proxy"))
+                    isadmin ? new XElement("div", new XElement("a", new XAttribute("href", Url.Route("default", new { controller = "Register" })), "Register the print proxy")) : null
                 );
             }
             else
