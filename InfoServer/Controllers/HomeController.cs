@@ -68,7 +68,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                                                 new XElement("dt", j.JobTitle),
                                                 isadmin ? new XElement("dd", "Username: " + j.Username) : null,
                                                 new XElement("dd", "Status: " + j.Status.ToString()),
-                                                new XElement("dd", "Last Updated: " + j.UpdateTime.ToShortDateString())
+                                                new XElement("dd", "Last Updated: " + j.UpdateTime.ToLocalTime().ToString("dd MMM yyyy  hh:mm tt"))
                                             )
                                         )
                                     )

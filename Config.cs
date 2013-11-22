@@ -9,6 +9,7 @@ using System.Reflection;
 using System.IO;
 using System.Threading;
 using System.Collections.Specialized;
+using System.Net.NetworkInformation;
 
 namespace TSVCEO.CloudPrint
 {
@@ -36,11 +37,19 @@ namespace TSVCEO.CloudPrint
         public static string WebProxyHost { get { return ConfigurationManager.AppSettings["WebProxyHost"]; } }
         public static int WebProxyPort { get { return Int32.Parse(ConfigurationManager.AppSettings["WebProxyPort"] ?? "0"); } }
 
+        public static string MailServerHost { get { return ConfigurationManager.AppSettings["MailServerHost"]; } }
+        public static int MailServerPort { get { return Int32.Parse(ConfigurationManager.AppSettings["MailServerPort"] ?? (MailServerUseSSL ? "465" : "25")); } }
+        public static bool MailServerUseSSL { get { return Boolean.Parse(ConfigurationManager.AppSettings["MailServerUseSSL"] ?? "false"); } }
+        public static bool MailServerUseAuth { get { return Boolean.Parse(ConfigurationManager.AppSettings["MailServerUseAuth"] ?? "false"); } }
+        public static string MailServerUsername { get { return ConfigurationManager.AppSettings["MailServerUsername"]; } }
+        public static string MailFrom { get { return ConfigurationManager.AppSettings["MailFrom"]; } }
+
         public static string XMPPResourceName { get { return ConfigurationManager.AppSettings["XMPPResourceName"]; } }
         public static string XMPPHost { get { return ConfigurationManager.AppSettings["XMPPHost"] ?? "talk.google.com"; } }
         public static int XMPPPort { get { return Int32.Parse(ConfigurationManager.AppSettings["XMPPPort"] ?? "5222"); } }
 
         public static int UserAuthHttpPort { get { return Int32.Parse(ConfigurationManager.AppSettings["UserAuthHttpPort"] ?? "12387"); } }
+        public static string UserAuthHost { get { return ConfigurationManager.AppSettings["UserAuthHost"] ?? Environment.MachineName; } }
 
         public static string DataDirName { get { return GetAppDataDirFilename("Data"); } }
 

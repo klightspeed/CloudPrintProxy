@@ -292,43 +292,6 @@ namespace TSVCEO.CloudPrint.Util
             return Convert.ToBase64String(md5.Hash).Replace("=", "");
         }
 
-        private static SecureString GetUserCredential(string username)
-        {
-            if (CredentialCache.ContainsKey(username))
-            {
-                return CredentialCache[username];
-            }
-
-            string obusername = ProtectUsername(username);
-            byte[] enccred = GetDatabaseCredentials(obusername);
-            if (enccred != null)
-            {
-                try
-                {
-                    byte[] cred = ProtectedData.Unprotect(enccred, null, DataProtectionScope.LocalMachine);
-                    if (cred != null)
-                    {
-                        SecureString secstr = new SecureString();
-
-                        foreach (byte c in cred)
-                        {
-                            secstr.AppendChar((char)c);
-                        }
-
-                        secstr.MakeReadOnly();
-
-                        return secstr;
-                    }
-                }
-                catch (CryptographicException)
-                {
-                    InvalidateUserCredentials(username);
-                }
-            }
-
-            return null;
-        }
-
         private static void SetUserCredential(string username, SecureString password)
         {
             CredentialCache[username] = password;
@@ -416,6 +379,43 @@ namespace TSVCEO.CloudPrint.Util
         #endregion
 
         #region public methods
+
+        public static SecureString GetUserCredential(string username)
+        {
+            if (CredentialCache.ContainsKey(username))
+            {
+                return CredentialCache[username];
+            }
+
+            string obusername = ProtectUsername(username);
+            byte[] enccred = GetDatabaseCredentials(obusername);
+            if (enccred != null)
+            {
+                try
+                {
+                    byte[] cred = ProtectedData.Unprotect(enccred, null, DataProtectionScope.LocalMachine);
+                    if (cred != null)
+                    {
+                        SecureString secstr = new SecureString();
+
+                        foreach (byte c in cred)
+                        {
+                            secstr.AppendChar((char)c);
+                        }
+
+                        secstr.MakeReadOnly();
+
+                        return secstr;
+                    }
+                }
+                catch (CryptographicException)
+                {
+                    InvalidateUserCredentials(username);
+                }
+            }
+
+            return null;
+        }
 
         public static WindowsIdentity GetWindowsIdentity(string username)
         {
