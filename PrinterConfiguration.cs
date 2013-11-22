@@ -8,8 +8,8 @@ namespace TSVCEO.CloudPrint
 {
     public class PrinterConfiguration : ConfigurationElement
     {
-        public const string DefaultJobPrinter = "Ghostscript";
-        public static readonly Type DefaultJobPrinterType = typeof(Printing.Ghostscript);
+        public const string DefaultJobPrinter = "PopplerPostscriptPrinter";
+        public static readonly Type DefaultJobPrinterType = typeof(Printing.PopplerPostscriptPrinter);
 
         [ConfigurationProperty("name", IsKey = true, IsRequired = true)]
         public string Name { get { return (string)base["name"]; } set { base["name"] = value; } }
