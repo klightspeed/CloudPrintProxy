@@ -8,11 +8,14 @@ namespace TSVCEO.CloudPrint
 {
     public class PrinterConfiguration : ConfigurationElement
     {
+        public const string DefaultJobPrinter = "Ghostscript";
+        public static readonly Type DefaultJobPrinterType = typeof(Printing.Ghostscript);
+
         [ConfigurationProperty("name", IsKey = true, IsRequired = true)]
         public string Name { get { return (string)base["name"]; } set { base["name"] = value; } }
 
-        [ConfigurationProperty("jobPrinter", IsRequired = false, DefaultValue = "Ghostscript")]
-        public string JobPrinter { get { return (string)base["name"]; } set { base["name"] = value; } }
+        [ConfigurationProperty("jobPrinter", IsRequired = false, DefaultValue = DefaultJobPrinter)]
+        public string JobPrinter { get { return (string)base["jobPrinter"]; } set { base["jobPrinter"] = value; } }
     }
 
     [ConfigurationCollection(typeof(PrinterConfiguration))]
@@ -30,6 +33,9 @@ namespace TSVCEO.CloudPrint
 
     public class PrinterConfigurationSection : ConfigurationSection
     {
+        [ConfigurationProperty("defaultJobPrinter", IsRequired = false, DefaultValue = PrinterConfiguration.DefaultJobPrinter)]
+        public string DefaultJobPrinter { get { return (string)base["defaultJobPrinter"]; } set { base["defaultJobPrinter"] = value; } }
+
         [ConfigurationProperty("printers")]
         public PrinterConfigurationCollection Printers { get { return (PrinterConfigurationCollection)base["printers"]; } set { base["printers"] = value; } }
     }

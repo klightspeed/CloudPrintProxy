@@ -11,6 +11,14 @@ namespace TSVCEO.CloudPrint.Util
 {
     public class ProcessHelper
     {
+        public static UTF8Encoding UTF8
+        {
+            get
+            {
+                return new UTF8Encoding(false, false);
+            }
+        }
+
         public static string EscapeCommandLineArgument(string arg)
         {
             StringBuilder sb = new StringBuilder();
@@ -72,8 +80,8 @@ namespace TSVCEO.CloudPrint.Util
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8,
+                StandardOutputEncoding = UTF8,
+                StandardErrorEncoding = UTF8,
                 UseShellExecute = false,
                 WorkingDirectory = Environment.GetEnvironmentVariable("SYSTEMDRIVE") + "\\",
                 UserName = username,
@@ -88,7 +96,7 @@ namespace TSVCEO.CloudPrint.Util
 
         public static int RunProcessAsUser(string username, string domain, SecureString password, Stream stdin, Stream stdout, Stream stderr, string exename, string[] args)
         {
-            return RunProcessAsUser(username, domain, password, new StreamReader(stdin, Encoding.UTF8, false), new StreamWriter(stdout, Encoding.UTF8), new StreamWriter(stderr, Encoding.UTF8), exename, args);
+            return RunProcessAsUser(username, domain, password, new StreamReader(stdin, UTF8, false), new StreamWriter(stdout, UTF8), new StreamWriter(stderr, UTF8), exename, args);
         }
 
         public static int RunProcessAsUser(string username, string domain, SecureString password, TextReader stdin, TextWriter stdout, TextWriter stderr, string exename, string[] args)

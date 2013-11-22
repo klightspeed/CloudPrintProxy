@@ -66,13 +66,17 @@ namespace TSVCEO.CloudPrint.Printing
 
                 if (this.PrinterConfiguration != null)
                 {
-                    this.JobPrinterType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes().Where(t => t.Name == this.Name && typeof(JobPrinter).IsAssignableFrom(t))).SingleOrDefault();
+                    this.JobPrinterType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes().Where(t => t.Name == this.PrinterConfiguration.JobPrinter && typeof(JobPrinter).IsAssignableFrom(t))).SingleOrDefault();
+                }
+                else
+                {
+                    this.JobPrinterType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes().Where(t => t.Name == printerconfigs.DefaultJobPrinter && typeof(JobPrinter).IsAssignableFrom(t))).SingleOrDefault();
                 }
             }
 
             if (this.JobPrinterType == null)
             {
-                this.JobPrinterType = typeof(Ghostscript);
+                this.JobPrinterType = PrinterConfiguration.DefaultJobPrinterType;
             }
         }
     }

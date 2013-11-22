@@ -104,7 +104,9 @@
     <Compile Include="PrinterConfiguration.cs" />
     <Compile Include="Printing\Ghostscript.cs" />
     <Compile Include="Printing\JobPrinter.cs" />
+    <Compile Include="Printing\PopplerPostscriptPrinter.cs" />
     <Compile Include="Printing\WindowsPrintJobProcessor.cs" />
+    <Compile Include="Printing\WindowsRawPDFPrinter.cs" />
     <Compile Include="Printing\WindowsRawPrinter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Printing\CloudPrinterImpl.cs" />
@@ -117,7 +119,9 @@
     <Compile Include="CloudPrintJob.cs" />
     <Compile Include="CloudPrintJobStatus.cs" />
     <Compile Include="Service\NativeService.cs" />
-    <Compile Include="Service\ServiceBase.cs" />
+    <Compile Include="Service\ServiceBase.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Util\ConsoleLogger.cs" />
     <Compile Include="Util\Dll.cs" />
     <Compile Include="Util\HTTPHelper.cs" />
@@ -128,7 +132,9 @@
     <Compile Include="Util\OAuthTicket.cs" />
     <Compile Include="Util\ProcessHelper.cs" />
     <Compile Include="Proxy\XMPP.cs" />
-    <Compile Include="Service\GoogleCloudPrintProxyService.cs" />
+    <Compile Include="Service\GoogleCloudPrintProxyService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="InfoServer\Session.cs" />
     <Compile Include="Util\TaskHelpers.cs" />
@@ -151,6 +157,42 @@
     <Content Include="Lib\System.Web.Http.WebHost.dll" />
     <Content Include="Lib\System.Web.Http.WebHost.xml" />
     <Content Include="Lib\System.Web.Http.xml" />
+    <Content Include="poppler\libfreetype-6.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\libgcc_s_sjlj-1.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\libjpeg-8.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\liblcms2-2.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\liblzma-5.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\libopenjpeg-1.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\libpng15-15.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\libpoppler-28.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\libpoppler-cpp-0.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\libstdc++-6.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\libtiff-5.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="poppler\pdftops.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup Condition="'$(Platform)' == 'x86'">
     <Content Include="x86\SQLite.Interop.dll">

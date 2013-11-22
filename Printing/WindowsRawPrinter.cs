@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Printing;
 
 namespace TSVCEO.CloudPrint.Printing
 {
@@ -31,6 +32,9 @@ namespace TSVCEO.CloudPrint.Printing
         public byte[] Prologue { get; set; }
         public byte[][] PageData { get; set; }
         public byte[] Epilogue { get; set; }
+        public byte[] PrintTicketXML { get; set; }
+
+        public PrintTicket PrintTicket { get { return new PrintTicket(new MemoryStream(PrintTicketXML)); } set { PrintTicketXML = value.GetXmlStream().ToArray(); } }
     }
 
     public class WindowsRawPrinter
