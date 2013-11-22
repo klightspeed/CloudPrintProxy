@@ -60,7 +60,9 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                             new XElement("dt", "This server has received the following print jobs:"),
                             this.PrintProxy.PrintJobs == null ? null : new XElement("dd",
                                 new XElement("ul",
-                                    this.PrintProxy.PrintJobs.Where(j => isadmin || j.Username == Session["username"]).Select(j =>
+                                    this.PrintProxy.PrintJobs.Where(j => isadmin || j.Username == Session["username"])
+                                                   .OrderByDescending(j => j.CreateTime)
+                                                   .Select(j =>
                                         new XElement("li",
                                             new XElement("dl",
                                                 new XElement("dt", j.JobTitle),
