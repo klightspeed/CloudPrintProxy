@@ -68,13 +68,13 @@ namespace TSVCEO.CloudPrint.Printing
         protected virtual int RunCommandAsUser(string username, string[] args, Stream stdin, Stream stdout, Stream stderr)
         {
             string gsexepath = GetGhostscriptPath("gswin32c.exe");
-            return WindowsIdentityStore.RunProcessAsUser(username, stdin, stdout, stderr, gsexepath, args);
+            return WindowsIdentityStore.RunProcessAsUser(username, stdin, stdout, stderr, Path.GetDirectoryName(gsexepath), gsexepath, args);
         }
 
         protected virtual int RunCommand(string[] args, Stream stdin, Stream stdout, Stream stderr)
         {
             string gsexepath = GetGhostscriptPath("gswin32c.exe");
-            return ProcessHelper.RunProcess(stdin, stdout, stderr, gsexepath, args);
+            return ProcessHelper.RunProcess(stdin, stdout, stderr, Path.GetDirectoryName(gsexepath), gsexepath, args);
         }
 
         protected string EscapePostscriptString(string str)

@@ -66,7 +66,7 @@ namespace TSVCEO.CloudPrint.Util
             return String.Join(" ", args.Select(s => EscapeCommandLineArgument(s)).ToArray());
         }
 
-        private static Process CreateProcessAsUser(string username, string domain, SecureString password, string exename, string[] args)
+        private static Process CreateProcessAsUser(string username, string domain, SecureString password, string workdir, string exename, string[] args)
         {
             Process proc = new Process();
 
@@ -83,7 +83,7 @@ namespace TSVCEO.CloudPrint.Util
                 StandardOutputEncoding = UTF8,
                 StandardErrorEncoding = UTF8,
                 UseShellExecute = false,
-                WorkingDirectory = Environment.GetEnvironmentVariable("SYSTEMDRIVE") + "\\",
+                WorkingDirectory = workdir,
                 UserName = username,
                 Domain = domain,
                 Password = password
@@ -94,14 +94,14 @@ namespace TSVCEO.CloudPrint.Util
             return proc;
         }
 
-        public static int RunProcessAsUser(string username, string domain, SecureString password, Stream stdin, Stream stdout, Stream stderr, string exename, string[] args)
+        public static int RunProcessAsUser(string username, string domain, SecureString password, Stream stdin, Stream stdout, Stream stderr, string workdir, string exename, string[] args)
         {
-            return RunProcessAsUser(username, domain, password, new StreamReader(stdin, UTF8, false), new StreamWriter(stdout, UTF8), new StreamWriter(stderr, UTF8), exename, args);
+            return RunProcessAsUser(username, domain, password, new StreamReader(stdin, UTF8, false), new StreamWriter(stdout, UTF8), new StreamWriter(stderr, UTF8), workdir, exename, args);
         }
 
-        public static int RunProcessAsUser(string username, string domain, SecureString password, TextReader stdin, TextWriter stdout, TextWriter stderr, string exename, string[] args)
+        public static int RunProcessAsUser(string username, string domain, SecureString password, TextReader stdin, TextWriter stdout, TextWriter stderr, string workdir, string exename, string[] args)
         {
-            using (Process proc = CreateProcessAsUser(username, domain, password, exename, args))
+            using (Process proc = CreateProcessAsUser(username, domain, password, workdir, exename, args))
             {
                 proc.Start();
                 Task stdintask = Task.Factory.StartNew(() => { try { proc.StandardInput.Write(stdin.ReadToEnd()); } catch { } });
@@ -119,14 +119,14 @@ namespace TSVCEO.CloudPrint.Util
             }
         }
 
-        public static int RunProcess(Stream stdin, Stream stdout, Stream stderr, string exename, string[] args)
+        public static int RunProcess(Stream stdin, Stream stdout, Stream stderr, string workdir, string exename, string[] args)
         {
-            return RunProcessAsUser(null, null, null, stdin, stdout, stderr, exename, args);
+            return RunProcessAsUser(null, null, null, stdin, stdout, stderr, workdir, exename, args);
         }
 
-        public static int RunProcess(TextReader stdin, TextWriter stdout, TextWriter stderr, string exename, string[] args)
+        public static int RunProcess(TextReader stdin, TextWriter stdout, TextWriter stderr, string workdir, string exename, string[] args)
         {
-            return RunProcessAsUser(null, null, null, stdin, stdout, stderr, exename, args);
+            return RunProcessAsUser(null, null, null, stdin, stdout, stderr, workdir, exename, args);
         }
     }
 }

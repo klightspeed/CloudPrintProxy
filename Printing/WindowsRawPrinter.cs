@@ -399,7 +399,7 @@ namespace TSVCEO.CloudPrint.Printing
                 TextWriter stdout_writer = new StreamWriter(stdout);
                 TextWriter stderr_writer = new StreamWriter(stderr);
 
-                int retcode = WindowsIdentityStore.RunProcessAsUser(jobinfo.UserName, stdin_reader, stdout_writer, stderr_writer, Assembly.GetExecutingAssembly().Location, new string[] { "-print" });
+                int retcode = WindowsIdentityStore.RunProcessAsUser(jobinfo.UserName, stdin_reader, stdout_writer, stderr_writer, Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Assembly.GetExecutingAssembly().Location, new string[] { "-print" });
 
                 stdout_writer.Flush();
                 stderr_writer.Flush();

@@ -157,42 +157,19 @@
     <Content Include="Lib\System.Web.Http.WebHost.dll" />
     <Content Include="Lib\System.Web.Http.WebHost.xml" />
     <Content Include="Lib\System.Web.Http.xml" />
-    <Content Include="poppler\libfreetype-6.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libgcc_s_sjlj-1.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libjpeg-8.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\liblcms2-2.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\liblzma-5.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libopenjpeg-1.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libpng15-15.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libpoppler-28.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libpoppler-cpp-0.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libstdc++-6.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libtiff-5.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\pdftops.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Content Include="poppler\libfreetype-6.dll" />
+    <Content Include="poppler\libgcc_s_sjlj-1.dll" />
+    <Content Include="poppler\libjpeg-8.dll" />
+    <Content Include="poppler\liblcms2-2.dll" />
+    <Content Include="poppler\liblzma-5.dll" />
+    <Content Include="poppler\libopenjpeg-1.dll" />
+    <Content Include="poppler\libpng15-15.dll" />
+    <Content Include="poppler\libpoppler-28.dll" />
+    <Content Include="poppler\libpoppler-cpp-0.dll" />
+    <Content Include="poppler\libstdc++-6.dll" />
+    <Content Include="poppler\libtiff-5.dll" />
+    <Content Include="poppler\pdftops.exe" />
+    <Content Include="poppler\zlib1.dll" />
   </ItemGroup>
   <ItemGroup Condition="'$(Platform)' == 'x86'">
     <Content Include="x86\SQLite.Interop.dll">
@@ -216,6 +193,7 @@
   <ItemGroup>
     <EmbeddedResource Include="InfoServer\Scripts\test.js" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
