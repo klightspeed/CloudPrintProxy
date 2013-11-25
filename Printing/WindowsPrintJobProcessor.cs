@@ -43,6 +43,7 @@ namespace TSVCEO.CloudPrint.Printing
             PrintJobQueue = new ConcurrentQueue<CloudPrintJob>();
             DeferredJobQueue = new ConcurrentQueue<CloudPrintJob>();
             UserJobNotifierQueue = new ConcurrentQueue<CloudPrintJob>();
+            UsersNotifiedToLogin = new Dictionary<string, DateTime>();
         }
 
         ~WindowsPrintJobProcessor()
@@ -184,6 +185,13 @@ namespace TSVCEO.CloudPrint.Printing
                     client.Credentials = new NetworkCredential(adminemail, password);
                 }
 
+                Logger.Log(LogLevel.Info, "Sending email\n\nFrom: {0}\nTo: {1}\nSubject: {2}\n\n{3}",
+                    mailfrom,
+                    email,
+                    subject,
+                    message
+                );
+
                 client.Send(mailfrom, email, subject, message);
             }
         }
@@ -192,22 +200,27 @@ namespace TSVCEO.CloudPrint.Printing
         {
             if (!UsersNotifiedToLogin.ContainsKey(job.Username) || UsersNotifiedToLogin[job.Username] < DateTime.Now.AddHours(-24))
             {
-                try
+                if (job.CreateTime > DateTime.Now.AddDays(-3))
                 {
-                    string message = String.Format(
-                        "You have sent a job to cloud printer \"{0}\" on {1}\n\nPlease log into http://{2}:{3}/ to allow this job (and any others) to be printed.",
-                        job.Printer.Name,
-                        Environment.MachineName,
-                        Config.UserAuthHost,
-                        Config.UserAuthHttpPort
-                    );
-                    string subject = String.Format("Please log in to enable cloud printing on {0}", Environment.MachineName);
-                    SendEmail(job.OwnerId, subject, message);
-                    UsersNotifiedToLogin[job.Username] = DateTime.Now;
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log(LogLevel.Warning, "Error notifying user to login\n\n{0}", ex.ToString());
+                    try
+                    {
+                        string message = String.Format(
+                            "You have sent a job to cloud printer \"{0}\" on {1} at {2} on {3}\n\nPlease log into http://{4}:{5}/ to allow this job (and any others) to be printed.",
+                            job.Printer.Name,
+                            Environment.MachineName,
+                            job.CreateTime.ToLocalTime().ToString("hh:mm tt"),
+                            job.CreateTime.ToLocalTime().ToString("dd MMM yyyy"),
+                            Config.UserAuthHost,
+                            Config.UserAuthHttpPort
+                        );
+                        string subject = String.Format("Please log in to enable cloud printing on {0}", Environment.MachineName);
+                        UsersNotifiedToLogin[job.Username] = DateTime.Now;
+                        SendEmail(job.OwnerId, subject, message);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log(LogLevel.Warning, "Error notifying user to log in\n\n{0}", ex.ToString());
+                    }
                 }
             }
         }
@@ -231,7 +244,7 @@ namespace TSVCEO.CloudPrint.Printing
             }
             catch (Exception ex)
             {
-                Logger.Log(LogLevel.Warning, "WindowsPrintJobProcessor task caught exception {0}\n{1}", ex.Message, ex.ToString());
+                Logger.Log(LogLevel.Warning, "UserNotifier task caught exception {0}\n{1}", ex.Message, ex.ToString());
             }
         }
 
@@ -267,7 +280,7 @@ namespace TSVCEO.CloudPrint.Printing
 
                 if (UserNotifierTask == null)
                 {
-                    UserNotifierTask = Task.Factory.StartNew(() => { }, cancelToken);
+                    UserNotifierTask = Task.Factory.StartNew(() => UserNotifier(cancelToken), cancelToken);
                 }
 
                 if (DeferredPrintQueueTimer == null)
