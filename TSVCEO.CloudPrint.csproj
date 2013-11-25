@@ -89,6 +89,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="InfoServer\Controllers\HomeController.cs" />
+    <Compile Include="InfoServer\Controllers\JobDataController.cs" />
     <Compile Include="InfoServer\Controllers\RegisterController.cs" />
     <Compile Include="InfoServer\Controllers\ScriptsController.cs" />
     <Compile Include="InfoServer\Controllers\StatusController.cs" />
