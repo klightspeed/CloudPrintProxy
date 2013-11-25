@@ -32,7 +32,6 @@ namespace TSVCEO.CloudPrint.Service
             this.Stopped.Reset();
             Logger.Log(LogLevel.Info, "Starting service");
             PrintProcessor = new WindowsPrintJobProcessor();
-            PrintProcessor.Start();
 
             PrintProxy = new CloudPrintProxy(PrintProcessor, (p) => Stop());
 

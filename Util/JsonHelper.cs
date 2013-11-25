@@ -133,8 +133,6 @@ namespace TSVCEO.CloudPrint.Util
 
         private static void WriteJsonValue(JsonWriter writer, object value)
         {
-            Type t = value.GetType();
-
             if (value == null || value is string || value is byte[])
             {
                 writer.WriteValue(value);

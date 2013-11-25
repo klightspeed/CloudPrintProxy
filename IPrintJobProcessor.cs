@@ -7,11 +7,10 @@ namespace TSVCEO.CloudPrint
 {
     public interface IPrintJobProcessor : IDisposable
     {
-        void Start();
-        void Stop();
         void AddJob(CloudPrintJob job);
         void AddJobs(IEnumerable<CloudPrintJob> jobs);
         IEnumerable<CloudPrinter> GetPrintQueues();
         IEnumerable<CloudPrintJob> GetQueuedJobs();
+        void RestartDeferredPrintJobs();
     }
 }

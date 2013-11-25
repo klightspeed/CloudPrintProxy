@@ -1,6 +1,7 @@
 ﻿using System;
 using TSVCEO.CloudPrint.Printing;
 using TSVCEO.CloudPrint.Service;
+using System.IO;
 
 namespace TSVCEO.CloudPrint
 {
@@ -13,7 +14,7 @@ namespace TSVCEO.CloudPrint
         {
             if (args.Length == 1 && args[0] == "-print")
             {
-                return WindowsRawPrinter.PrintRaw_Child(Console.In, Console.Out, Console.Error);
+                return WindowsRawPrinter.PrintRaw_Child(Console.OpenStandardInput(), Console.OpenStandardOutput(), Console.OpenStandardError());
             }
             else
             {

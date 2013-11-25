@@ -225,44 +225,16 @@ namespace TSVCEO.CloudPrint.Printing
         [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool EndDocPrinter(IntPtr hPrinter);
 
-        private static void Serialize(TextWriter writer, object graph)
+        private static void Serialize(Stream stream, object graph)
         {
             BinaryFormatter formatter = new BinaryFormatter(null, new StreamingContext(StreamingContextStates.CrossProcess));
-            using (MemoryStream memstream = new MemoryStream())
-            {
-                formatter.Serialize(memstream, graph);
-                string base64 = Convert.ToBase64String(memstream.ToArray());
-                writer.Write(base64);
-                writer.Write("\n====\n");
-            }
+            formatter.Serialize(stream, graph);
         }
 
-        private static string ReadBase64(TextReader reader)
-        {
-            StringBuilder sb = new StringBuilder();
-            while (true)
-            {
-                string line = reader.ReadLine();
-                if (line == "====")
-                {
-                    break;
-                }
-
-                sb.Append(line);
-            }
-
-            return sb.ToString();
-        }
-
-        private static object Deserialize(TextReader reader)
+        private static object Deserialize(Stream stream)
         {
             BinaryFormatter formatter = new BinaryFormatter(null, new StreamingContext(StreamingContextStates.CrossProcess));
-            string base64 = ReadBase64(reader);
-            byte[] data = Convert.FromBase64String(base64);
-            using (MemoryStream memstream = new MemoryStream(data))
-            {
-                return formatter.Deserialize(memstream);
-            }
+            return formatter.Deserialize(stream);
         }
 
         private static void WritePrinter(IntPtr hPrinter, byte[] data)
@@ -369,7 +341,7 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        public static int PrintRaw_Child(TextReader stdin, TextWriter stdout, TextWriter stderr)
+        public static int PrintRaw_Child(Stream stdin, Stream stdout, Stream stderr)
         {
             try
             {
@@ -391,25 +363,17 @@ namespace TSVCEO.CloudPrint.Printing
 
             try
             {
-                TextWriter stdin_writer = new StreamWriter(stdin);
-                Serialize(stdin_writer, jobinfo);
-                stdin_writer.Flush();
+                Serialize(stdin, jobinfo);
+                stdin.Flush();
                 stdin.Position = 0;
-                TextReader stdin_reader = new StreamReader(stdin);
-                TextWriter stdout_writer = new StreamWriter(stdout);
-                TextWriter stderr_writer = new StreamWriter(stderr);
 
-                int retcode = WindowsIdentityStore.RunProcessAsUser(jobinfo.UserName, stdin_reader, stdout_writer, stderr_writer, Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Assembly.GetExecutingAssembly().Location, new string[] { "-print" });
-
-                stdout_writer.Flush();
-                stderr_writer.Flush();
+                int retcode = WindowsIdentityStore.RunProcessAsUser(jobinfo.UserName, stdin, stdout, stderr, Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Assembly.GetExecutingAssembly().Location, new string[] { "-print" });
 
                 if (retcode != 0)
                 {
                     stderr.Position = 0;
-                    TextReader stderr_reader = new StreamReader(stderr);
                     Logger.Log(LogLevel.Info, "Error printing file:\n{0}", System.Text.Encoding.ASCII.GetString(stderr.ToArray()));
-                    throw new WindowsRawPrinterException((Exception)Deserialize(stderr_reader));
+                    throw new WindowsRawPrinterException((Exception)Deserialize(stderr));
                 }
             }
             finally

@@ -9,7 +9,6 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
 using TSVCEO.CloudPrint.Util;
-using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Security.AccessControl;
 using System.Security.Principal;

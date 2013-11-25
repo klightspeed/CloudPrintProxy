@@ -96,23 +96,17 @@ namespace TSVCEO.CloudPrint.Util
 
         public static int RunProcessAsUser(string username, string domain, SecureString password, Stream stdin, Stream stdout, Stream stderr, string workdir, string exename, string[] args)
         {
-            return RunProcessAsUser(username, domain, password, new StreamReader(stdin, UTF8, false), new StreamWriter(stdout, UTF8), new StreamWriter(stderr, UTF8), workdir, exename, args);
-        }
-
-        public static int RunProcessAsUser(string username, string domain, SecureString password, TextReader stdin, TextWriter stdout, TextWriter stderr, string workdir, string exename, string[] args)
-        {
             using (Process proc = CreateProcessAsUser(username, domain, password, workdir, exename, args))
             {
                 proc.Start();
-                Task stdintask = Task.Factory.StartNew(() => { try { proc.StandardInput.Write(stdin.ReadToEnd()); } catch { } });
-                Task stdouttask = Task.Factory.StartNew(() => { try { stdout.Write(proc.StandardOutput.ReadToEnd()); } catch { } });
-                Task stderrtask = Task.Factory.StartNew(() => { try { stderr.Write(proc.StandardError.ReadToEnd()); } catch { } });
+
+                Task stdintask = Task.Factory.StartNew(() => { try { stdin.CopyTo(proc.StandardInput.BaseStream); } catch { } });
+                Task stdouttask = Task.Factory.StartNew(() => { try { proc.StandardOutput.BaseStream.CopyTo(stdout); } catch { } });
+                Task stderrtask = Task.Factory.StartNew(() => { try { proc.StandardError.BaseStream.CopyTo(stderr); } catch { } });
                 proc.WaitForExit();
                 stdintask.Wait();
                 stdouttask.Wait();
                 stderrtask.Wait();
-                stdout.Write(proc.StandardOutput.ReadToEnd());
-                stderr.Write(proc.StandardError.ReadToEnd());
                 stdout.Flush();
                 stderr.Flush();
                 return proc.ExitCode;
@@ -120,11 +114,6 @@ namespace TSVCEO.CloudPrint.Util
         }
 
         public static int RunProcess(Stream stdin, Stream stdout, Stream stderr, string workdir, string exename, string[] args)
-        {
-            return RunProcessAsUser(null, null, null, stdin, stdout, stderr, workdir, exename, args);
-        }
-
-        public static int RunProcess(TextReader stdin, TextWriter stdout, TextWriter stderr, string workdir, string exename, string[] args)
         {
             return RunProcessAsUser(null, null, null, stdin, stdout, stderr, workdir, exename, args);
         }

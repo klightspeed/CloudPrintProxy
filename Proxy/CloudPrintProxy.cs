@@ -12,7 +12,6 @@ using System.Printing;
 using System.IO;
 using System.Windows.Xps.Packaging;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Xml.Linq;
@@ -277,6 +276,8 @@ namespace TSVCEO.CloudPrint.Proxy
             if (PrintJobsLastUpdated + MinPrintJobUpdateInterval < DateTime.Now)
             {
                 PrintJobsLastUpdated = DateTime.Now;
+                Logger.Log(LogLevel.Debug, "Updating print jobs for all printers");
+                PrintJobProcessor.RestartDeferredPrintJobs();
 
                 try
                 {
@@ -326,12 +327,7 @@ namespace TSVCEO.CloudPrint.Proxy
                 {
                     _PrintJobs[job.JobID] = job;
                     PrintJobProcessor.AddJob(job);
-                    Logger.Log(LogLevel.Info, "Received new print job {0} [{1}] owned by {2} for printer [{3}]", job.JobID, job.JobTitle, job.Username, job.Printer.Name);
-                    if (job.Status == CloudPrintJobStatus.ERROR || job.Status == CloudPrintJobStatus.IN_PROGRESS)
-                    {
-                        job.SetStatus(CloudPrintJobStatus.QUEUED);
-                        Logger.Log(LogLevel.Info, "Restarting print job {0} [{1}] owned by {2} for printer [{3}]", job.JobID, job.JobTitle, job.Username, job.Printer.Name);
-                    }
+                    //Logger.Log(LogLevel.Info, "Received new print job {0} [{1}] owned by {2} for printer [{3}]", job.JobID, job.JobTitle, job.Username, job.Printer.Name);
                 }
             }
 

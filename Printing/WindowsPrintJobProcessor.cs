@@ -26,10 +26,8 @@ namespace TSVCEO.CloudPrint.Printing
         private ConcurrentQueue<CloudPrintJob> PrintJobQueue { get; set; }
         private ConcurrentQueue<CloudPrintJob> DeferredJobQueue { get; set; }
         private ConcurrentQueue<CloudPrintJob> UserJobNotifierQueue { get; set; }
-        private AutoResetEvent PrintJobsUpdated { get; set; }
         private Task PrintQueueProcessorTask { get; set; }
-        private Timer DeferredPrintQueueTimer { get; set; }
-        private Task UserNotifierTask { get; set; }
+        private object PrintQueueProcessorTaskLock { get; set; }
         private CancellationTokenSource CancelTokenSource { get; set; }
         private Dictionary<string, DateTime> UsersNotifiedToLogin { get; set; }
 
@@ -39,11 +37,11 @@ namespace TSVCEO.CloudPrint.Printing
 
         public WindowsPrintJobProcessor()
         {
-            PrintJobsUpdated = new AutoResetEvent(false);
             PrintJobQueue = new ConcurrentQueue<CloudPrintJob>();
             DeferredJobQueue = new ConcurrentQueue<CloudPrintJob>();
             UserJobNotifierQueue = new ConcurrentQueue<CloudPrintJob>();
             UsersNotifiedToLogin = new Dictionary<string, DateTime>();
+            PrintQueueProcessorTaskLock = new object();
         }
 
         ~WindowsPrintJobProcessor()
@@ -57,11 +55,6 @@ namespace TSVCEO.CloudPrint.Printing
 
         private void Dispose(bool disposing)
         {
-            if (DeferredPrintQueueTimer != null)
-            {
-                DeferredPrintQueueTimer.Dispose();
-            }
-
             if (CancelTokenSource != null)
             {
                 CancelTokenSource.Cancel();
@@ -72,18 +65,10 @@ namespace TSVCEO.CloudPrint.Printing
                     PrintQueueProcessorTask.Dispose();
                 }
 
-                if (UserNotifierTask != null)
-                {
-                    UserNotifierTask.Wait();
-                    UserNotifierTask.Dispose();
-                }
-
                 CancelTokenSource.Dispose();
             }
 
-            DeferredPrintQueueTimer = null;
             PrintQueueProcessorTask = null;
-            UserNotifierTask = null;
             CancelTokenSource = null;
 
             if (disposing)
@@ -95,12 +80,63 @@ namespace TSVCEO.CloudPrint.Printing
 
         private IEnumerable<CloudPrintJob> DequeueDeferredPrintQueueJobs()
         {
-            lock (DeferredJobQueue)
+            CloudPrintJob job;
+            while (DeferredJobQueue.TryDequeue(out job))
             {
-                CloudPrintJob job;
-                while (DeferredJobQueue.TryDequeue(out job))
+                yield return job;
+            }
+        }
+
+        private void SendEmail(string email, string subject, string message)
+        {
+            if (Config.MailServerHost != null)
+            {
+                SmtpClient client = new SmtpClient(Config.MailServerHost, Config.MailServerPort);
+                client.EnableSsl = Config.MailServerUseSSL;
+
+                string mailfrom = Config.MailFrom ?? Config.OAuthEmail;
+
+                if (Config.MailServerUseAuth)
                 {
-                    yield return job;
+                    string adminemail = Config.MailServerUsername ?? Config.MailFrom ?? Config.OAuthEmail;
+                    string adminusername = adminemail.Split('@').First();
+                    SecureString password = WindowsIdentityStore.GetUserCredential(adminusername);
+                    client.Credentials = new NetworkCredential(adminemail, password);
+                }
+
+                Logger.Log(LogLevel.Info, "Sending email\n\nFrom: {0}\nTo: {1}\nSubject: {2}\n\n{3}",
+                    mailfrom,
+                    email,
+                    subject,
+                    message
+                );
+
+                //client.Send(mailfrom, email, subject, message);
+            }
+        }
+
+        private void NotifyUserToLogin(CloudPrintJob job)
+        {
+            if (!UsersNotifiedToLogin.ContainsKey(job.Username) || UsersNotifiedToLogin[job.Username] < DateTime.Now.AddHours(-24))
+            {
+                try
+                {
+                    string message = String.Format(
+                        "You have sent a job to cloud printer \"{0}\" on {1} at {2} on {3}\n\nPlease log into http://{4}:{5}/ to allow this job (and any others) to be printed.",
+                        job.Printer.Name,
+                        Environment.MachineName,
+                        job.CreateTime.ToLocalTime().ToString("hh:mm tt"),
+                        job.CreateTime.ToLocalTime().ToString("dd MMM yyyy"),
+                        Config.UserAuthHost,
+                        Config.UserAuthHttpPort
+                    );
+                    string subject = String.Format("Please log in to enable cloud printing on {0}", Environment.MachineName);
+                    UsersNotifiedToLogin[job.Username] = DateTime.Now;
+                    SendEmail(job.OwnerId, subject, message);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log(LogLevel.Warning, "Error notifying user to log in\n\n{0}", ex.ToString());
                 }
             }
         }
@@ -136,115 +172,45 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        private void PrintJobQueueProcessor(CancellationToken cancelToken)
+        private void DoProcessQueuedPrintJobs(CancellationToken cancelToken)
         {
+            Logger.Log(LogLevel.Debug, "Processing queued jobs");
             try
             {
-                while (WaitHandle.WaitAny(new WaitHandle[] { this.PrintJobsUpdated, cancelToken.WaitHandle }) == 0)
+                CloudPrintJob job;
+                while (!cancelToken.IsCancellationRequested && PrintJobQueue.TryDequeue(out job))
                 {
-                    CloudPrintJob job;
-                    while (!cancelToken.IsCancellationRequested && PrintJobQueue.TryDequeue(out job))
+                    if (job.Status == CloudPrintJobStatus.QUEUED)
                     {
-                        if (job.Status == CloudPrintJobStatus.QUEUED)
-                        {
-                            ProcessPrintJob(job);
-                        }
-
-                        if (job.Status == CloudPrintJobStatus.QUEUED)
-                        {
-                            lock (DeferredJobQueue)
-                            {
-                                DeferredJobQueue.Enqueue(job);
-                            }
-
-                            UserJobNotifierQueue.Enqueue(job);
-                        }
+                        ProcessPrintJob(job);
                     }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log(LogLevel.Warning, "WindowsPrintJobProcessor task caught exception {0}\n{1}", ex.Message, ex.ToString());
-            }
-        }
 
-        private void SendEmail(string email, string subject, string message)
-        {
-            if (Config.MailServerHost != null)
-            {
-                SmtpClient client = new SmtpClient(Config.MailServerHost, Config.MailServerPort);
-                client.EnableSsl = Config.MailServerUseSSL;
-
-                string mailfrom = Config.MailFrom ?? Config.OAuthEmail;
-
-                if (Config.MailServerUseAuth)
-                {
-                    string adminemail = Config.MailServerUsername ?? Config.MailFrom ?? Config.OAuthEmail;
-                    string adminusername = adminemail.Split('@').First();
-                    SecureString password = WindowsIdentityStore.GetUserCredential(adminusername);
-                    client.Credentials = new NetworkCredential(adminemail, password);
-                }
-
-                Logger.Log(LogLevel.Info, "Sending email\n\nFrom: {0}\nTo: {1}\nSubject: {2}\n\n{3}",
-                    mailfrom,
-                    email,
-                    subject,
-                    message
-                );
-
-                client.Send(mailfrom, email, subject, message);
-            }
-        }
-
-        private void NotifyUserToLogin(CloudPrintJob job)
-        {
-            if (!UsersNotifiedToLogin.ContainsKey(job.Username) || UsersNotifiedToLogin[job.Username] < DateTime.Now.AddHours(-24))
-            {
-                if (job.CreateTime > DateTime.Now.AddDays(-3))
-                {
-                    try
+                    if (job.Status == CloudPrintJobStatus.QUEUED)
                     {
-                        string message = String.Format(
-                            "You have sent a job to cloud printer \"{0}\" on {1} at {2} on {3}\n\nPlease log into http://{4}:{5}/ to allow this job (and any others) to be printed.",
-                            job.Printer.Name,
-                            Environment.MachineName,
-                            job.CreateTime.ToLocalTime().ToString("hh:mm tt"),
-                            job.CreateTime.ToLocalTime().ToString("dd MMM yyyy"),
-                            Config.UserAuthHost,
-                            Config.UserAuthHttpPort
-                        );
-                        string subject = String.Format("Please log in to enable cloud printing on {0}", Environment.MachineName);
-                        UsersNotifiedToLogin[job.Username] = DateTime.Now;
-                        SendEmail(job.OwnerId, subject, message);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Log(LogLevel.Warning, "Error notifying user to log in\n\n{0}", ex.ToString());
-                    }
-                }
-            }
-        }
+                        DeferredJobQueue.Enqueue(job);
 
-        private void UserNotifier(CancellationToken cancelToken)
-        {
-            try
-            {
-                while (WaitHandle.WaitAny(new WaitHandle[] { this.PrintJobsUpdated, cancelToken.WaitHandle }) == 0)
-                {
-                    CloudPrintJob job;
-
-                    while (!cancelToken.IsCancellationRequested && PrintJobQueue.TryDequeue(out job))
-                    {
-                        if (job.Status == CloudPrintJobStatus.QUEUED)
+                        if (job.Status == CloudPrintJobStatus.QUEUED && !WindowsIdentityStore.HasWindowsIdentity(job.Username) && job.CreateTime > DateTime.Now.AddDays(-3))
                         {
                             NotifyUserToLogin(job);
                         }
                     }
                 }
+                Logger.Log(LogLevel.Debug, "Done");
             }
             catch (Exception ex)
             {
-                Logger.Log(LogLevel.Warning, "UserNotifier task caught exception {0}\n{1}", ex.Message, ex.ToString());
+                Logger.Log(LogLevel.Warning, "ProcessQueuedPrintJobs task caught exception {0}\n{1}", ex.Message, ex.ToString());
+            }
+        }
+
+        private void ProcessQueuedPrintJobs()
+        {
+            lock (PrintQueueProcessorTaskLock)
+            {
+                if (PrintQueueProcessorTask == null || PrintQueueProcessorTask.IsCompleted)
+                {
+                    PrintQueueProcessorTask = Task.Factory.StartNew(() => DoProcessQueuedPrintJobs(CancelTokenSource.Token), CancelTokenSource.Token);
+                }
             }
         }
 
@@ -260,43 +226,6 @@ namespace TSVCEO.CloudPrint.Printing
 
         #region public methods
 
-        public void Start()
-        {
-            ThrowIfDisposed();
-
-            if (!Running)
-            {
-                if (CancelTokenSource == null)
-                {
-                    CancelTokenSource = new CancellationTokenSource();
-                }
-
-                CancellationToken cancelToken = CancelTokenSource.Token;
-
-                if (PrintQueueProcessorTask == null)
-                {
-                    PrintQueueProcessorTask = Task.Factory.StartNew(() => PrintJobQueueProcessor(cancelToken), cancelToken);
-                }
-
-                if (UserNotifierTask == null)
-                {
-                    UserNotifierTask = Task.Factory.StartNew(() => UserNotifier(cancelToken), cancelToken);
-                }
-
-                if (DeferredPrintQueueTimer == null)
-                {
-                    DeferredPrintQueueTimer = new Timer(new TimerCallback((obj) => AddJobs(DequeueDeferredPrintQueueJobs())), null, RequeueTime, RequeueTime);
-                }
-            }
-        }
-
-        public void Stop()
-        {
-            ThrowIfDisposed();
-
-            Dispose(false);
-        }
-
         public void Dispose()
         {
             Dispose(true);
@@ -306,19 +235,27 @@ namespace TSVCEO.CloudPrint.Printing
         {
             ThrowIfDisposed();
 
-            PrintJobQueue.Enqueue(job);
-            PrintJobsUpdated.Set();
+            lock (PrintJobQueue)
+            {
+                PrintJobQueue.Enqueue(job);
+            }
+
+            ProcessQueuedPrintJobs();
         }
 
         public void AddJobs(IEnumerable<CloudPrintJob> jobs)
         {
             ThrowIfDisposed();
-
-            foreach (var job in jobs)
+            
+            lock (PrintJobQueue)
             {
-                PrintJobQueue.Enqueue(job);
+                foreach (var job in jobs)
+                {
+                    PrintJobQueue.Enqueue(job);
+                }
             }
-            PrintJobsUpdated.Set();
+
+            ProcessQueuedPrintJobs();
         }
 
         public IEnumerable<CloudPrinter> GetPrintQueues()
@@ -332,6 +269,13 @@ namespace TSVCEO.CloudPrint.Printing
         public IEnumerable<CloudPrintJob> GetQueuedJobs()
         {
             return DeferredJobQueue.AsEnumerable().Union(PrintJobQueue.AsEnumerable());
+        }
+
+        public void RestartDeferredPrintJobs()
+        {
+            Logger.Log(LogLevel.Debug, "Re-queueing deferred jobs");
+            AddJobs(DequeueDeferredPrintQueueJobs());
+            Logger.Log(LogLevel.Debug, "Done");
         }
 
         #endregion

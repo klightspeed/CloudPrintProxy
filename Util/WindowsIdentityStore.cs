@@ -11,7 +11,6 @@ using System.Security.AccessControl;
 using System.Diagnostics;
 using System.Data.SQLite;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
 
 namespace TSVCEO.CloudPrint.Util
@@ -495,13 +494,6 @@ namespace TSVCEO.CloudPrint.Util
         }
 
         public static int RunProcessAsUser(string username, Stream stdin, Stream stdout, Stream stderr, string workdir, string exename, string[] args)
-        {
-            AddUserToCurrentWindowStationDesktop(username);
-
-            return ProcessHelper.RunProcessAsUser(username, Domain, GetUserCredential(username), stdin, stdout, stderr, workdir, exename, args);
-        }
-
-        public static int RunProcessAsUser(string username, TextReader stdin, TextWriter stdout, TextWriter stderr, string workdir, string exename, string[] args)
         {
             AddUserToCurrentWindowStationDesktop(username);
 

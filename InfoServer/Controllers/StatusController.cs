@@ -39,7 +39,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                             )
                         ),
                         new XElement("tbody",
-                            PrintProxy.GetQueuedJobs().GroupBy(j => j.Username).OrderBy(j => j.Key).Select(j => 
+                            PrintProxy.PrintJobs.Where(j => j.Status == CloudPrintJobStatus.QUEUED).GroupBy(j => j.Username).OrderBy(j => j.Key).Select(j => 
                                 new XElement("tr",
                                     new XElement("td", j.Key),
                                     new XElement("td", WindowsIdentityStore.HasWindowsIdentity(j.Key) ? "Yes" : "No"),

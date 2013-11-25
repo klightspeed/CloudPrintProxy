@@ -11,7 +11,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.Security;
 using System.Threading;
-using System.Threading.Tasks;
 using TSVCEO.CloudPrint.Util;
 
 namespace TSVCEO.CloudPrint.Proxy
@@ -522,15 +521,15 @@ namespace TSVCEO.CloudPrint.Proxy
         protected ManualResetEvent ReadyForSubscriptions { get; set; }
         protected ManualResetEvent ReaderFaulted { get; set; }
         protected Exception ReaderException { get; set; }
+        protected Exception WriterException { get; set; }
         protected ConcurrentQueue<InfoQuery> QueuedQueries { get; set; }
         protected ConcurrentDictionary<string, InfoQuery> RunningQueries { get; set; }
         protected ConcurrentQueue<InfoQueryResponse> QueuedResponses { get; set; }
         protected ConcurrentQueue<Message> QueuedMessages { get; set; }
         protected ConcurrentQueue<InfoQuery> QueuedSubscriptions { get; set; }
         protected CancellationTokenSource CancelSource { get; set; }
-        protected Task ReaderTask { get; set; }
-        protected Task WriterTask { get; set; }
-        protected Action<Task, XMPP> TaskEndedCallback { get; set; }
+        protected Thread ReaderThread { get; set; }
+        protected Thread WriterThread { get; set; }
 
         protected string BareJID { get { return FullJID.Substring(0, FullJID.IndexOf('/')); } }
         protected string Domain { get { return LoginJID.Substring(LoginJID.IndexOf('@') + 1); } }
@@ -723,7 +722,12 @@ namespace TSVCEO.CloudPrint.Proxy
                         string channel = el.Attribute("channel").Value;
                         if (Subscriptions.ContainsKey(channel))
                         {
+                            Logger.Log(LogLevel.Debug, "Handling message for channel {0}", channel);
                             Subscriptions[channel](el, this);
+                        }
+                        else
+                        {
+                            Logger.Log(LogLevel.Debug, "Message for unknown channel {0}", channel);
                         }
                     }
                 }
@@ -784,7 +788,7 @@ namespace TSVCEO.CloudPrint.Proxy
                 xml.ReadStartElement(NamespaceStream + "stream");
                 xml.Expect((rdr) => rdr.GetAttribute("from") == Domain, (rdr) => String.Format("Expected domain {0}; got domain {1}", Domain, rdr.GetAttribute("from")));
                 var features = xml.ReadElement(NamespaceStream + "features");
-                ReaderTask = Task.Factory.StartNew(() => XMPPReader(xml, canceltoken), canceltoken);
+                ReaderThread = new Thread(new ThreadStart(() => XMPPReader(xml, canceltoken)));
                 BeginBind();
 
                 while (!canceltoken.IsCancellationRequested)
@@ -794,7 +798,7 @@ namespace TSVCEO.CloudPrint.Proxy
                         case 0:
                             break;
                         case 1:
-                            throw new AggregateException(ReaderTask.Exception);
+                            throw new AggregateException(ReaderException);
                         case 2:
                             ProcessQueuedQueries(xml, canceltoken);
                             break;
@@ -833,49 +837,6 @@ namespace TSVCEO.CloudPrint.Proxy
                 xml.ReadStartElement(NamespaceSASL + "success");
                 xml.Stream.Logged = false;
                 StartXMPPStream(new XmlStream(xml.Stream), canceltoken);
-            }
-        }
-        
-        protected void StartPlaintextStream(CancellationToken canceltoken)
-        {
-            using (var stream = Connect(EndpointHost, EndpointPort, ProxyHost, ProxyPort))
-            {
-                using (var xml = new XmlStream(stream))
-                {
-                    using (var xmppstream = xml.WriteStart(new XElement(NamespaceStream + "stream", new XAttribute("to", Domain), new XAttribute(XNamespace.Xml + "lang", "en"), new XAttribute("version", "1.0"))))
-                    {
-                        xml.ReadStartElement(NamespaceStream + "stream");
-                        xml.Expect((rdr) => rdr.GetAttribute("from") == Domain, (rdr) => String.Format("Expected domain {0}; got domain {1}", Domain, rdr.GetAttribute("from")));
-                        var features = xml.ReadElement(NamespaceStream + "features");
-                        xml.Write(new XElement(NamespaceStartTLS + "starttls"));
-                        xml.ReadStartElement(NamespaceStartTLS + "proceed");
-                        xml.Stream.Logged = false;
-                        using (var ssl = new SslStream(xml.Stream, true, (sender, cert, chain, errs) => true))
-                        {
-                            ssl.AuthenticateAsClient(EndpointHost);
-                            using (var sslxml = new XmlStream(ssl))
-                            {
-                                StartTLSStream(sslxml, canceltoken);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        protected void StartXMPPWithTaskEndedCallback(CancellationToken canceltoken, Action<Exception, XMPP> callback)
-        {
-            try
-            {
-                StartPlaintextStream(canceltoken);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                Logger.Log(LogLevel.Warning, "XMPP Writer task caught exception {0}\n{1}", ex.Message, ex.ToString());
-                callback(ex, this);
             }
         }
 
@@ -919,26 +880,71 @@ namespace TSVCEO.CloudPrint.Proxy
             }
         }
 
-        protected Task StartXMPPTask(Action<Exception, XMPP> callback)
+        protected void StartPlaintextStream(CancellationToken canceltoken)
+        {
+            using (var stream = Connect(EndpointHost, EndpointPort, ProxyHost, ProxyPort))
+            {
+                using (var xml = new XmlStream(stream))
+                {
+                    using (var xmppstream = xml.WriteStart(new XElement(NamespaceStream + "stream", new XAttribute("to", Domain), new XAttribute(XNamespace.Xml + "lang", "en"), new XAttribute("version", "1.0"))))
+                    {
+                        xml.ReadStartElement(NamespaceStream + "stream");
+                        xml.Expect((rdr) => rdr.GetAttribute("from") == Domain, (rdr) => String.Format("Expected domain {0}; got domain {1}", Domain, rdr.GetAttribute("from")));
+                        var features = xml.ReadElement(NamespaceStream + "features");
+                        xml.Write(new XElement(NamespaceStartTLS + "starttls"));
+                        xml.ReadStartElement(NamespaceStartTLS + "proceed");
+                        xml.Stream.Logged = false;
+                        using (var ssl = new SslStream(xml.Stream, true, (sender, cert, chain, errs) => true))
+                        {
+                            ssl.AuthenticateAsClient(EndpointHost);
+                            using (var sslxml = new XmlStream(ssl))
+                            {
+                                StartTLSStream(sslxml, canceltoken);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        protected void StartXMPPWithThreadEndedCallback(CancellationToken canceltoken, Action<Exception, XMPP> callback)
+        {
+            try
+            {
+                StartPlaintextStream(canceltoken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LogLevel.Warning, "XMPP Writer task caught exception {0}\n{1}", ex.Message, ex.ToString());
+                WriterException = ex;
+                callback(ex, this);
+            }
+        }
+
+        protected Thread StartXMPPThread(Action<Exception, XMPP> callback)
         {
             CancellationToken canceltoken = CancelSource.Token;
-            return Task.Factory.StartNew(() => StartXMPPWithTaskEndedCallback(canceltoken, callback), canceltoken);
+            return new Thread(new ThreadStart(() => StartXMPPWithThreadEndedCallback(canceltoken, callback)));
         }
 
         protected void Wait(bool _throw)
         {
-            try
+            if (WriterThread != null)
             {
-                if (WriterTask != null)
+                WriterThread.Join();
+
+                if (WriterException != null)
                 {
-                    WriterTask.Wait();
-                }
-            }
-            catch
-            {
-                if (_throw)
-                {
-                    throw;
+                    Exception ex = WriterException;
+                    WriterException = null;
+
+                    if (_throw)
+                    {
+                        throw new AggregateException(ex);
+                    }
                 }
             }
         }
@@ -952,7 +958,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
         public void Subscribe(string channel, Action<XElement, XMPP> callback)
         {
-            if (WriterTask == null)
+            if (WriterThread == null)
             {
                 throw new InvalidOperationException("XMPP not started");
             }
@@ -992,9 +998,9 @@ namespace TSVCEO.CloudPrint.Proxy
 
         public void Start(Action<Exception, XMPP> callback)
         {
-            if (this.WriterTask == null)
+            if (this.WriterThread == null)
             {
-                this.WriterTask = StartXMPPTask(callback);
+                this.WriterThread = StartXMPPThread(callback);
             }
         }
         #endregion

@@ -30,9 +30,9 @@ namespace TSVCEO.CloudPrint.Proxy
         public override string Domain { get { return OwnerId.Split(new char[] { '@' }, 2).ToArray()[1]; } }
         public override DateTime CreateTime { get { return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(Double.Parse(_JobAttributes.createTime.ToString())); } }
         public override DateTime UpdateTime { get { return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(Double.Parse(_JobAttributes.updateTime.ToString())); } }
-        public override CloudPrintJobStatus Status { get; protected set; }
-        public override string ErrorCode { get; protected set; }
-        public override string ErrorMessage { get; protected set; }
+        public override CloudPrintJobStatus Status { get { return Enum.Parse(typeof(CloudPrintJobStatus), _JobAttributes.status); } protected set { _JobAttributes.status = value.ToString(); } }
+        public override string ErrorCode { get { return _JobAttributes.errorCode; } protected set { _JobAttributes.errorCode = value; } }
+        public override string ErrorMessage { get { return _JobAttributes.message; } protected set { _JobAttributes.message = value; } }
 
         private void WriteJobData()
         {
@@ -152,6 +152,8 @@ namespace TSVCEO.CloudPrint.Proxy
             this.ErrorCode = null;
             this.ErrorMessage = null;
             _Proxy.UpdatePrintJob(this);
+            WriteJobJson();
+            WriteJobXml();
 
             if (status == CloudPrintJobStatus.DONE)
             {
@@ -167,6 +169,8 @@ namespace TSVCEO.CloudPrint.Proxy
             this.ErrorCode = errorCode;
             this.ErrorMessage = errorMessage;
             _Proxy.UpdatePrintJob(this);
+            WriteJobJson();
+            WriteJobXml();
         }
 
         public override PrintTicket GetPrintTicket()
@@ -217,6 +221,10 @@ namespace TSVCEO.CloudPrint.Proxy
                 _JobAttributes = Util.JsonHelper.ReadJson(rdr);
             }
 
+            using (TextReader rdr = File.OpenText(basename + ".job.xml"))
+            {
+            }
+
             this._PrintDataBasename = basename;
             this._PrintDataFileName = basename + ".pdf";
 
@@ -225,6 +233,9 @@ namespace TSVCEO.CloudPrint.Proxy
 
         public static IEnumerable<CloudPrintJob> GetIncompletePrintJobs(CloudPrintProxy proxy)
         {
+            return new List<CloudPrintJob>();
+
+            /*
             string jobrootdirname = Path.Combine(Config.DataDirName, "PrintJobs");
             foreach (string jobpdfpath in Directory.EnumerateFiles(jobrootdirname, "*.pdf", SearchOption.AllDirectories))
             {
@@ -260,6 +271,7 @@ namespace TSVCEO.CloudPrint.Proxy
                     }
                 }
             }
+             */
         }
     }
 }
