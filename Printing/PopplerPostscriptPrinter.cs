@@ -146,7 +146,7 @@ namespace TSVCEO.CloudPrint.Printing
                 stdout,
                 stderr,
                 Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\\poppler",
-                "pdftops.exe",
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\\poppler\\pdftops.exe",
                 new string[] { job.GetPrintDataFile(), "-" }
             );
 
