@@ -11,13 +11,15 @@ namespace TSVCEO.CloudPrint.Proxy
 {
     public class CloudPrintJobImpl : CloudPrintJob
     {
+        protected static Dictionary<string, CloudPrintJob> _PrintJobs = new Dictionary<string,CloudPrintJob>();
+
         protected readonly CloudPrintProxy _Proxy;
         protected readonly dynamic _JobAttributes;
         protected readonly CloudPrinter _Printer;
         protected readonly string _PrintDataFileName;
         protected readonly string _PrintDataBasename;
 
-        public override CloudPrinter Printer { get { return _Printer; } }
+        public override CloudPrinter Printer { get { return _Printer ?? _Proxy.GetCloudPrinterById(_JobAttributes.printerid); } }
         public override string JobID { get { return _JobAttributes.id; } }
         public override string ContentType { get { return _JobAttributes.contentType; } }
         public override string FileUrl { get { return _JobAttributes.fileUrl; } }
@@ -59,20 +61,21 @@ namespace TSVCEO.CloudPrint.Proxy
 #endif
         }
 
-#if DEBUG
         private void WriteJobTicket()
         {
             string filename = _PrintDataBasename + ".ticket.xml";
+            
+            PrintTicket ticket = this.GetPrintTicket();
             
             if (!File.Exists(filename))
             {
                 using (Stream ticketstream = File.Create(filename))
                 {
-                    this.GetPrintTicket().SaveTo(ticketstream);
+                    ticket.SaveTo(ticketstream);
                 }
-
             }
 
+#if DEBUG
             try  /* #@$%^& thing gives an IO exception, but doesn't say what happened.  #@&^%$ */
             {
                 File.SetCreationTime(filename, this.CreateTime);
@@ -81,6 +84,7 @@ namespace TSVCEO.CloudPrint.Proxy
             catch
             {
             }
+#endif
 
             Util.WindowsIdentityStore.SetFileAccess(filename, this.Username);
         }
@@ -105,6 +109,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
             xdoc.Save(filename);
 
+#if DEBUG
             try  /* #@$%^& thing gives an IO exception, but doesn't say what happened.  #@&^%$ */
             {
                 File.SetCreationTime(filename, this.CreateTime);
@@ -113,6 +118,7 @@ namespace TSVCEO.CloudPrint.Proxy
             catch
             {
             }
+#endif
 
             Util.WindowsIdentityStore.SetFileAccess(filename, this.Username);
         }
@@ -126,6 +132,7 @@ namespace TSVCEO.CloudPrint.Proxy
                 Util.JsonHelper.WriteJson(new StreamWriter(jobfile, Encoding.UTF8), this._JobAttributes);
             }
 
+#if DEBUG
             try  /* #@$%^& thing gives an IO exception, but doesn't say what happened.  #@&^%$ */
             {
                 File.SetCreationTime(filename, this.CreateTime);
@@ -134,10 +141,10 @@ namespace TSVCEO.CloudPrint.Proxy
             catch
             {
             }
+#endif
 
             Util.WindowsIdentityStore.SetFileAccess(filename, this.Username);
         }
-#endif
 
         public override void SetStatus(CloudPrintJobStatus status)
         {
@@ -164,7 +171,17 @@ namespace TSVCEO.CloudPrint.Proxy
 
         public override PrintTicket GetPrintTicket()
         {
-            return _Proxy.GetPrintTicket(this); 
+            if (File.Exists(_PrintDataBasename + ".ticket.xml"))
+            {
+                using (Stream stream = File.OpenRead(_PrintDataBasename + ".ticket.xml"))
+                {
+                    return new PrintTicket(stream);
+                }
+            }
+            else
+            {
+                return _Proxy.GetPrintTicket(this);
+            }
         }
 
         public override string GetPrintDataFile()
@@ -184,11 +201,65 @@ namespace TSVCEO.CloudPrint.Proxy
             Directory.CreateDirectory(jobdirname);
 
             WriteJobData();
-#if DEBUG
             WriteJobTicket();
             WriteJobXml();
             WriteJobJson();
-#endif
+
+            _PrintJobs[this.JobID] = this;
+        }
+
+        protected CloudPrintJobImpl(CloudPrintProxy proxy, string basename)
+        {
+            this._Proxy = proxy;
+
+            using (TextReader rdr = File.OpenText(basename + ".job.json"))
+            {
+                _JobAttributes = Util.JsonHelper.ReadJson(rdr);
+            }
+
+            this._PrintDataBasename = basename;
+            this._PrintDataFileName = basename + ".pdf";
+
+            _PrintJobs[this.JobID] = this;
+        }
+
+        public static IEnumerable<CloudPrintJob> GetIncompletePrintJobs(CloudPrintProxy proxy)
+        {
+            string jobrootdirname = Path.Combine(Config.DataDirName, "PrintJobs");
+            foreach (string jobpdfpath in Directory.EnumerateFiles(jobrootdirname, "*.pdf", SearchOption.AllDirectories))
+            {
+                string jobid = Path.GetFileNameWithoutExtension(jobpdfpath);
+
+                if (_PrintJobs.ContainsKey(jobid))
+                {
+                    yield return _PrintJobs[jobid];
+                }
+                else
+                {
+                    string jobpath = Path.GetDirectoryName(jobpdfpath);
+                    string basename = Path.Combine(jobpath, jobid);
+                    string jobjsonpath = basename + ".job.json";
+                    string jobticketpath = basename + ".ticket.xml";
+
+                    if (File.Exists(jobjsonpath) && File.Exists(jobticketpath))
+                    {
+                        CloudPrintJob job = null;
+
+                        try
+                        {
+                            job = new CloudPrintJobImpl(proxy, basename);
+                        }
+                        catch
+                        {
+                        }
+
+                        if (job != null)
+                        {
+                            yield return job;
+                        }
+                    }
+                }
+            }
         }
     }
 }

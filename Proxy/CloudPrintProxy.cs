@@ -280,16 +280,19 @@ namespace TSVCEO.CloudPrint.Proxy
 
                 try
                 {
-                    List<CloudPrintJob> jobs = new List<CloudPrintJob>();
+                    Dictionary<string, CloudPrintJob> jobs = CloudPrintJobImpl.GetIncompletePrintJobs(this).ToDictionary(j => j.JobID, j => j);
 
                     IEnumerable<CloudPrinter> printers = Queues;
 
                     foreach (CloudPrinter printer in printers)
                     {
-                        jobs.AddRange(UpdateCloudPrintJobs(printer));
+                        foreach (CloudPrintJob job in UpdateCloudPrintJobs(printer))
+                        {
+                            jobs[job.JobID] = job;
+                        }
                     }
 
-                    return jobs;
+                    return jobs.Values.ToList();
                 }
                 catch (Exception ex)
                 {
