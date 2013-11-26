@@ -277,7 +277,6 @@ namespace TSVCEO.CloudPrint.Proxy
             {
                 PrintJobsLastUpdated = DateTime.Now;
                 Logger.Log(LogLevel.Debug, "Updating print jobs for all printers");
-                PrintJobProcessor.RestartDeferredPrintJobs();
 
                 try
                 {
@@ -573,6 +572,16 @@ namespace TSVCEO.CloudPrint.Proxy
         public IEnumerable<CloudPrintJob> GetQueuedJobs()
         {
             return this.PrintJobProcessor.GetQueuedJobs();
+        }
+
+        public IEnumerable<CloudPrintJob> GetQueuedJobs(string username)
+        {
+            return this.PrintJobProcessor.GetQueuedJobs(username);
+        }
+
+        public void RestartDeferredJobs(string username)
+        {
+            this.PrintJobProcessor.RestartDeferredPrintJobs(username);
         }
 
         #endregion

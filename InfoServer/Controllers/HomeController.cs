@@ -108,7 +108,9 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
             }
             else
             {
-                return Page();
+                HttpResponseMessage page = Page();
+                this.PrintProxy.RestartDeferredJobs(Session["username"]);
+                return page;
             }
         }
     }

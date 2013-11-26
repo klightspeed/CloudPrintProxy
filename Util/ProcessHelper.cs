@@ -5,6 +5,7 @@ using System.Text;
 using System.Diagnostics;
 using System.IO;
 using System.Security;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TSVCEO.CloudPrint.Util
@@ -66,7 +67,7 @@ namespace TSVCEO.CloudPrint.Util
             return String.Join(" ", args.Select(s => EscapeCommandLineArgument(s)).ToArray());
         }
 
-        private static Process CreateProcessAsUser(string username, string domain, SecureString password, string workdir, string exename, string[] args)
+        public static Process CreateProcessAsUser(string username, string domain, SecureString password, string workdir, string exename, string[] args)
         {
             Process proc = new Process();
 
@@ -94,21 +95,42 @@ namespace TSVCEO.CloudPrint.Util
             return proc;
         }
 
+        protected static void CopyStream(Stream instream, Stream outstream)
+        {
+            try
+            {
+                instream.CopyTo(outstream);
+                outstream.Flush();
+            }
+            catch
+            {
+            }
+        }
+
         public static int RunProcessAsUser(string username, string domain, SecureString password, Stream stdin, Stream stdout, Stream stderr, string workdir, string exename, string[] args)
         {
             using (Process proc = CreateProcessAsUser(username, domain, password, workdir, exename, args))
             {
-                proc.Start();
+                Thread stdinthread = new Thread(new ThreadStart(() => CopyStream(stdin, proc.StandardInput.BaseStream)));
+                Thread stdoutthread = new Thread(new ThreadStart(() => CopyStream(proc.StandardOutput.BaseStream, stdout)));
+                Thread stderrthread = new Thread(new ThreadStart(() => CopyStream(proc.StandardError.BaseStream, stderr)));
 
-                Task stdintask = Task.Factory.StartNew(() => { try { stdin.CopyTo(proc.StandardInput.BaseStream); } catch { } });
-                Task stdouttask = Task.Factory.StartNew(() => { try { proc.StandardOutput.BaseStream.CopyTo(stdout); } catch { } });
-                Task stderrtask = Task.Factory.StartNew(() => { try { proc.StandardError.BaseStream.CopyTo(stderr); } catch { } });
+                proc.Start();
+                stdinthread.Start();
+                stdoutthread.Start();
+                stderrthread.Start();
+
                 proc.WaitForExit();
-                stdintask.Wait();
-                stdouttask.Wait();
-                stderrtask.Wait();
+                proc.StandardInput.BaseStream.Close();
+                proc.StandardOutput.BaseStream.Close();
+                proc.StandardError.BaseStream.Close();
+
+                stdoutthread.Join();
+                stderrthread.Join();
+
                 stdout.Flush();
                 stderr.Flush();
+
                 return proc.ExitCode;
             }
         }

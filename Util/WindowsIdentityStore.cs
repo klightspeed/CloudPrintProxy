@@ -493,6 +493,13 @@ namespace TSVCEO.CloudPrint.Util
             return GetWindowsIdentity(username).Impersonate();
         }
 
+        public static Process CreateProcessAsUser(string username, string workdir, string exename, string[] args)
+        {
+            AddUserToCurrentWindowStationDesktop(username);
+
+            return ProcessHelper.CreateProcessAsUser(username, Domain, GetUserCredential(username), workdir, exename, args);
+        }
+
         public static int RunProcessAsUser(string username, Stream stdin, Stream stdout, Stream stderr, string workdir, string exename, string[] args)
         {
             AddUserToCurrentWindowStationDesktop(username);

@@ -283,21 +283,26 @@ namespace TSVCEO.CloudPrint.Printing
 
                 if (jobinfo.Prologue != null)
                 {
+                    Console.Error.WriteLine("Prologue {0} bytes", jobinfo.Prologue.Length);
                     WritePrinter(hPrinter, jobinfo.Prologue);
                 }
 
+                int pagenr = 1;
                 if (jobinfo.PageData != null)
                 {
                     foreach (byte[] pagedata in jobinfo.PageData)
                     {
+                        Console.Error.WriteLine("Page {0} - {1} bytes", pagenr, pagedata.Length);
                         StartPagePrinter(hPrinter);
                         WritePrinter(hPrinter, pagedata);
                         EndPagePrinter(hPrinter);
+                        pagenr++;
                     }
                 }
 
                 if (jobinfo.Epilogue != null)
                 {
+                    Console.Error.WriteLine("Epilogue {0} bytes", jobinfo.Epilogue.Length);
                     WritePrinter(hPrinter, jobinfo.Epilogue);
                 }
 

@@ -196,8 +196,19 @@ namespace TSVCEO.CloudPrint.Util
         public static HttpWebRequest CreateRequest(OAuthTicket ticket, string URL)
         {
             var req = (HttpWebRequest)HttpWebRequest.Create(URL);
+            
+            if (Config.WebProxyHost != null)
+            {
+                req.Proxy = new WebProxy(Config.WebProxyHost, Config.WebProxyPort);
+            }
+            else
+            {
+                req.Proxy = null;
+            }
+            
             req.UserAgent = Config.CloudPrintUserAgent;
             req.Headers.Add("X-CloudPrint-Proxy", Config.CloudPrintProxyName);
+            
             if (ticket != null)
             {
                 req.Headers.Add("Authorization", ticket.TokenType + " " + ticket.AccessToken);

@@ -1004,6 +1004,7 @@ namespace TSVCEO.CloudPrint.Proxy
             if (this.WriterThread == null)
             {
                 this.WriterThread = StartXMPPThread(callback);
+                this.WriterThread.Start();
             }
         }
         #endregion

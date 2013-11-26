@@ -25,10 +25,12 @@ namespace TSVCEO.CloudPrint
         [DataMember] public virtual CloudPrintJobStatus Status { get; protected set; }
         [DataMember] public virtual string ErrorCode { get; protected set; }
         [DataMember] public virtual string ErrorMessage { get; protected set; }
+        [DataMember] public virtual bool DeliveryAttempted { get; protected set; }
 
         public virtual void SetStatus(CloudPrintJobStatus status) { throw new NotImplementedException(); }
         public virtual void SetError(string ErrorCode, string ErrorMessage) { throw new NotImplementedException(); }
         public virtual PrintTicket GetPrintTicket() { throw new NotImplementedException(); }
         public virtual string GetPrintDataFile() { throw new NotImplementedException(); }
+        public virtual void SetDeliveryAttempted() { throw new NotImplementedException(); }
     }
 }
