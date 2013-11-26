@@ -789,6 +789,7 @@ namespace TSVCEO.CloudPrint.Proxy
                 xml.Expect((rdr) => rdr.GetAttribute("from") == Domain, (rdr) => String.Format("Expected domain {0}; got domain {1}", Domain, rdr.GetAttribute("from")));
                 var features = xml.ReadElement(NamespaceStream + "features");
                 ReaderThread = new Thread(new ThreadStart(() => XMPPReader(xml, canceltoken)));
+                ReaderThread.Start();
                 BeginBind();
 
                 while (!canceltoken.IsCancellationRequested)
@@ -927,7 +928,9 @@ namespace TSVCEO.CloudPrint.Proxy
         protected Thread StartXMPPThread(Action<Exception, XMPP> callback)
         {
             CancellationToken canceltoken = CancelSource.Token;
-            return new Thread(new ThreadStart(() => StartXMPPWithThreadEndedCallback(canceltoken, callback)));
+            Thread thread = new Thread(new ThreadStart(() => StartXMPPWithThreadEndedCallback(canceltoken, callback)));
+            thread.Start();
+            return thread;
         }
 
         protected void Wait(bool _throw)
