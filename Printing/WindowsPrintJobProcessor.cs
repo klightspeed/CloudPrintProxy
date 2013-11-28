@@ -87,31 +87,31 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        private void SendEmail(string email, string subject, string message)
+        private void SendEmail(string email, string subject, string body)
         {
-            if (Config.MailServerHost != null)
+            SmtpClient client = new SmtpClient();
+
+            if (client.Host != null)
             {
-                SmtpClient client = new SmtpClient(Config.MailServerHost, Config.MailServerPort);
-                client.EnableSsl = Config.MailServerUseSSL;
+                MailMessage message = new MailMessage();
 
-                string mailfrom = Config.MailFrom ?? Config.OAuthEmail;
-
-                if (Config.MailServerUseAuth)
+                if (message.From == null)
                 {
-                    string adminemail = Config.MailServerUsername ?? Config.MailFrom ?? Config.OAuthEmail;
-                    string adminusername = adminemail.Split('@').First();
-                    SecureString password = WindowsIdentityStore.GetUserCredential(adminusername);
-                    client.Credentials = new NetworkCredential(adminemail, password);
+                    message.From = new MailAddress(Config.OAuthEmail);
                 }
 
+                message.To.Add(email);
+                message.Subject = subject;
+                message.Body = body;
+
                 Logger.Log(LogLevel.Info, "Sending email\n\nFrom: {0}\nTo: {1}\nSubject: {2}\n\n{3}",
-                    mailfrom,
+                    message.From,
                     email,
                     subject,
                     message
                 );
 
-                client.Send(mailfrom, email, subject, message);
+                client.Send(message);
             }
         }
 
