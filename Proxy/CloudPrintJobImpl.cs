@@ -173,6 +173,11 @@ namespace TSVCEO.CloudPrint.Proxy
             WriteJobXml();
         }
 
+        public override void SetDeliveryAttempted()
+        {
+            this.DeliveryAttempted = true;
+        }
+
         public override PrintTicket GetPrintTicket()
         {
             if (File.Exists(_PrintDataBasename + ".ticket.xml"))

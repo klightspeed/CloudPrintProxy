@@ -129,7 +129,7 @@ namespace TSVCEO.CloudPrint.Printing
                     Config.UserAuthHttpPort
                 );
                 string subject = String.Format("Please log in to enable cloud printing on {0}", Environment.MachineName);
-                //SendEmail(job.OwnerId, subject, message);
+                SendEmail(job.OwnerId, subject, message);
             }
             catch (Exception ex)
             {
