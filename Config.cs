@@ -48,6 +48,7 @@ namespace TSVCEO.CloudPrint
 
         public static string CredentialDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["CredentialDatabaseFilename"]); } }
         public static string SessionDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["SessionDatabaseFilename"]); } }
+        public static string AuditronDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["AuditronDatabaseFilename"]); } }
 
         public static NameValueCollection GhostscriptPrinterDrivers { get { return ConfigurationManager.GetSection("ghostscriptPrinterDrivers") as NameValueCollection ?? new NameValueCollection(); } }
 

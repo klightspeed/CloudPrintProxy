@@ -333,16 +333,24 @@ namespace TSVCEO.CloudPrint.Printing
                     JobName = jobname,
                     PrinterName = printername,
                     UserName = username,
-                    RawPrintData = File.ReadAllBytes(tempfile)
+                    RawPrintData = File.ReadAllBytes(tempfile),
+                    RunAsUser = true
                 };
 
-                WindowsRawPrinter.PrintRawAsUser(jobinfo);
+                WindowsRawPrinter.PrintRaw(jobinfo);
             }
         }
 
         #endregion
 
         #region public methods
+
+        public override bool NeedUserAuth { get { return true; } }
+
+        public override bool UserCanPrint(string username)
+        {
+            return WindowsIdentityStore.HasWindowsIdentity(username);
+        }
 
         public override void Print(CloudPrintJob job)
         {

@@ -5,11 +5,14 @@ using System.Text;
 using System.IO;
 using System.Reflection;
 using System.Printing;
+using TSVCEO.CloudPrint.Util;
 
 namespace TSVCEO.CloudPrint.Printing
 {
     public class PopplerPostscriptPrinter : JobPrinter
     {
+        #region Protected Methods
+
         protected string EscapePostscriptString(string str)
         {
             StringBuilder sb = new StringBuilder();
@@ -126,20 +129,11 @@ namespace TSVCEO.CloudPrint.Printing
             yield return "setpagedevice";
         }
 
-        public override void Print(CloudPrintJob job)
+        protected byte[] ToPostscript(CloudPrintJob job)
         {
             MemoryStream stdin = new MemoryStream();
             MemoryStream stdout = new MemoryStream();
             MemoryStream stderr = new MemoryStream();
-
-            PrintTicket ticket = job.GetPrintTicket();
-            List<byte> pagesetup = this.SetPageDeviceCommand(ticket).SelectMany(w =>
-            {
-                List<byte> wb = Encoding.ASCII.GetBytes(w).ToList();
-                wb.Add((byte)' ');
-                return wb;
-            }).ToList();
-            pagesetup.Add((byte)'\n');
 
             int retval = Util.ProcessHelper.RunProcess(
                 stdin,
@@ -155,12 +149,41 @@ namespace TSVCEO.CloudPrint.Printing
                 throw new InvalidOperationException(String.Format("pstopdf returned status code {0}\n\n{1}", retval, Encoding.UTF8.GetString(stderr.ToArray())));
             }
 
-            byte[] psdata = stdout.ToArray();
+            return stdout.ToArray();
+        }
+
+        protected byte[] GetPJL(Dictionary<string, string> attribs)
+        {
+            return "\x1E%-12345X".ToArray()
+                .Concat("@PJL JOB MODE=PRINTER\r\n")
+                .Concat(attribs.SelectMany(kvp => "@PJL SET JOBATTR=\"@".ToArray().Concat(kvp.Key).Concat("=").Concat(kvp.Value).Concat("\"\r\n")))
+                .Concat("@PJL ENTER LANGUAGE=POSTSCRIPT\r\n")
+                .Cast<byte>()
+                .ToArray();
+        }
+        
+        protected void Print(CloudPrintJob job, bool runAsUser, bool usePJL, Dictionary<string, string> pjlattribs)
+        {
+            PrintTicket ticket = job.GetPrintTicket();
+            List<byte> pagesetup = this.SetPageDeviceCommand(ticket).SelectMany(w =>
+            {
+                List<byte> wb = Encoding.ASCII.GetBytes(w).ToList();
+                wb.Add((byte)' ');
+                return wb;
+            }).ToList();
+            pagesetup.Add((byte)'\n');
+
+            byte[] psdata = ToPostscript(job);
 
             bool inprologue = true;
             List<byte[]> pages = new List<byte[]>();
             List<byte> prologue = new List<byte>();
             byte[] epilogue = null;
+
+            if (usePJL)
+            {
+                prologue.AddRange(GetPJL(pjlattribs));
+            }
 
             byte[] pdfsetup = Encoding.ASCII.GetBytes("false pdfSetup");
             byte[] pagesep = Encoding.ASCII.GetBytes("%%Page:");
@@ -214,7 +237,7 @@ namespace TSVCEO.CloudPrint.Printing
             string[] pagestr = pages.Select(p => Encoding.ASCII.GetString(p)).ToArray();
             string epiloguestr = Encoding.ASCII.GetString(epilogue);
 
-            WindowsRawPrinter.PrintRawAsUser(new WindowsRawPrintJobInfo
+            WindowsRawPrinter.PrintRaw(new WindowsRawPrintJobInfo
             {
                 Prologue = prologue.ToArray(),
                 PageData = pages.ToArray(),
@@ -222,8 +245,27 @@ namespace TSVCEO.CloudPrint.Printing
                 JobName = job.JobTitle,
                 PrinterName = job.Printer.Name,
                 UserName = job.Username,
-                PrintTicket = ticket
+                PrintTicket = ticket,
+                RunAsUser = runAsUser
             });
         }
+
+        #endregion
+
+        #region Public Methods / Properties
+
+        public override bool NeedUserAuth { get { return true; } }
+
+        public override bool UserCanPrint(string username)
+        {
+            return WindowsIdentityStore.HasWindowsIdentity(username);
+        }
+
+        public override void Print(CloudPrintJob job)
+        {
+            Print(job, true, false, null);
+        }
+
+        #endregion
     }
 }

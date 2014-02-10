@@ -143,35 +143,41 @@ namespace TSVCEO.CloudPrint.Printing
             {
                 Logger.Log(LogLevel.Debug, "Job {0} deferred because {1}@{2} is not in an accepted domain", job.JobID, job.Username, job.Domain);
             }
-            else if (!WindowsIdentityStore.HasWindowsIdentity(job.Username))
-            {
-                Logger.Log(LogLevel.Debug, "Job {0} deferred because {1} has not logged in", job.JobID, job.Username);
-
-                if (job.CreateTime > DateTime.Now.AddDays(-3) && job.DeliveryAttempted)
-                {
-                    NotifyUserToLogin(job);
-                }
-
-                job.SetDeliveryAttempted();
-                UserDeferredJobs.GetOrAdd(job.Username, new ConcurrentQueue<CloudPrintJob>()).Enqueue(job);
-            }
             else
             {
-                job.SetStatus(CloudPrintJobStatus.IN_PROGRESS);
-                try
+                using (JobPrinter printer = Activator.CreateInstance(job.Printer.GetJobPrinterType()) as JobPrinter)
                 {
-                    Logger.Log(LogLevel.Info, "Starting job {0}", job.JobID);
-                    using (JobPrinter printer = Activator.CreateInstance(job.Printer.GetJobPrinterType()) as JobPrinter)
+                    if (!printer.UserCanPrint(job.Username))
                     {
-                        printer.Print(job);
+                        if (printer.NeedUserAuth)
+                        {
+                            Logger.Log(LogLevel.Debug, "Job {0} deferred because {1} has not logged in", job.JobID, job.Username);
+
+                            if (job.CreateTime > DateTime.Now.AddDays(-3) && !job.DeliveryAttempted)
+                            {
+                                NotifyUserToLogin(job);
+                            }
+                        }
+
+                        job.SetDeliveryAttempted();
+                        UserDeferredJobs.GetOrAdd(job.Username, new ConcurrentQueue<CloudPrintJob>()).Enqueue(job);
                     }
-                    Logger.Log(LogLevel.Info, "Job {0} Finished", job.JobID);
-                    job.SetStatus(CloudPrintJobStatus.DONE);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log(LogLevel.Info, "Job {0} in error:\nException:\n{1}\n{2}", job.JobID, ex.Message, ex.ToString());
-                    job.SetError(ex.GetType().Name, ex.Message);
+                    else
+                    {
+                        job.SetStatus(CloudPrintJobStatus.IN_PROGRESS);
+                        try
+                        {
+                            Logger.Log(LogLevel.Info, "Starting job {0}", job.JobID);
+                            printer.Print(job);
+                            Logger.Log(LogLevel.Info, "Job {0} Finished", job.JobID);
+                            job.SetStatus(CloudPrintJobStatus.DONE);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log(LogLevel.Info, "Job {0} in error:\nException:\n{1}\n{2}", job.JobID, ex.Message, ex.ToString());
+                            job.SetError(ex.GetType().Name, ex.Message);
+                        }
+                    }
                 }
             }
         }

@@ -323,35 +323,43 @@ namespace TSVCEO.CloudPrint.Util
 
         private static byte[] GetDatabaseCredentials(string obusername)
         {
-            var cmd = CredentialDatabase.CreateCommand();
-            cmd.CommandText = "SELECT encpassword FROM credentials WHERE obusername = @obusername";
-            cmd.Parameters.AddWithValue("@obusername", obusername);
-            var result = cmd.ExecuteScalar();
-            return result == null ? null : Convert.FromBase64String(result.ToString());
+            using (var cmd = CredentialDatabase.CreateCommand())
+            {
+                cmd.CommandText = "SELECT encpassword FROM credentials WHERE obusername = @obusername";
+                cmd.Parameters.AddWithValue("@obusername", obusername);
+                var result = cmd.ExecuteScalar();
+                return result == null ? null : Convert.FromBase64String(result.ToString());
+            }
         }
 
         private static void SetDatabaseCredentials(string obusername, byte[] credential)
         {
-            var cmd = CredentialDatabase.CreateCommand();
-            cmd.CommandText = "INSERT OR REPLACE INTO credentials (obusername, encpassword) VALUES (@obusername, @encpassword)";
-            cmd.Parameters.AddWithValue("@obusername", obusername);
-            cmd.Parameters.AddWithValue("@encpassword", Convert.ToBase64String(credential));
-            cmd.ExecuteNonQuery();
+            using (var cmd = CredentialDatabase.CreateCommand())
+            {
+                cmd.CommandText = "INSERT OR REPLACE INTO credentials (obusername, encpassword) VALUES (@obusername, @encpassword)";
+                cmd.Parameters.AddWithValue("@obusername", obusername);
+                cmd.Parameters.AddWithValue("@encpassword", Convert.ToBase64String(credential));
+                cmd.ExecuteNonQuery();
+            }
         }
 
         private static void DeleteDatabaseCredentials(string obusername)
         {
-            var cmd = CredentialDatabase.CreateCommand();
-            cmd.CommandText = "DELETE FROM credentials WHERE obusername = @obusername";
-            cmd.Parameters.AddWithValue("@obusername", obusername);
-            cmd.ExecuteNonQuery();
+            using (var cmd = CredentialDatabase.CreateCommand())
+            {
+                cmd.CommandText = "DELETE FROM credentials WHERE obusername = @obusername";
+                cmd.Parameters.AddWithValue("@obusername", obusername);
+                cmd.ExecuteNonQuery();
+            }
         }
 
         private static void InitCredentialsTable()
         {
-            var cmd = CredentialDatabase.CreateCommand();
-            cmd.CommandText = "CREATE TABLE IF NOT EXISTS credentials (obusername TEXT PRIMARY KEY, encpassword TEXT)";
-            cmd.ExecuteNonQuery();
+            using (var cmd = CredentialDatabase.CreateCommand())
+            {
+                cmd.CommandText = "CREATE TABLE IF NOT EXISTS credentials (obusername TEXT PRIMARY KEY, encpassword TEXT)";
+                cmd.ExecuteNonQuery();
+            }
         }
 
         private static void AddUserToCurrentWindowStationDesktop(string username)

@@ -43,6 +43,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                             ),
                             " to manage your printers."
                         ),
+                        isadmin ? new XElement("p", new XElement("a", new XAttribute("href", Url.Route("default", new { controller = "Auditron" })), "Auditron Username to Printer Code mapping")) : null,
                         this.PrintProxy.Queues == null ? null : new XElement("dl",
                             new XElement("dt", "This server is sharing the following printers:"),
                             new XElement("dd",

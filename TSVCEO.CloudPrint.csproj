@@ -88,6 +88,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="InfoServer\Controllers\AuditronController.cs" />
     <Compile Include="InfoServer\Controllers\HomeController.cs" />
     <Compile Include="InfoServer\Controllers\JobDataController.cs" />
     <Compile Include="InfoServer\Controllers\RegisterController.cs" />
@@ -103,6 +104,7 @@
     <Compile Include="InfoServer\Models\RegisterModel.cs" />
     <Compile Include="IPrintJobProcessor.cs" />
     <Compile Include="PrinterConfiguration.cs" />
+    <Compile Include="Printing\AuditronPostscriptPrinter.cs" />
     <Compile Include="Printing\Ghostscript.cs" />
     <Compile Include="Printing\JobPrinter.cs" />
     <Compile Include="Printing\PopplerPostscriptPrinter.cs" />

@@ -7,6 +7,8 @@ namespace TSVCEO.CloudPrint.Printing
 {
     public abstract class JobPrinter : IDisposable
     {
+        public abstract bool NeedUserAuth { get; }
+        public abstract bool UserCanPrint(string username);
         public abstract void Print(CloudPrintJob job);
 
         public static JobPrinter Create<T>() where T: JobPrinter, new()
