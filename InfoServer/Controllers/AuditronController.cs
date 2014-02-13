@@ -28,6 +28,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                         new XAttribute("action", Url.Route("default", new { controller = "Auditron" })),
                         new XAttribute("method", "post"),
                         new XElement("input", new XAttribute("type", "hidden"), new XAttribute("name", "Action"), new XAttribute("value", "Delete")),
+                        new XElement("input", new XAttribute("type", "hidden"), new XAttribute("name", "UserId"), new XAttribute("value", userid)),
                         new XElement("ul",
                             usernames.Select(u => new XElement("li",
                                 new XElement("input", new XAttribute("type", "checkbox"), new XAttribute("name", "user_" + u)),
@@ -39,13 +40,14 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                     new XElement("form",
                         new XAttribute("action", Url.Route("default", new { controller = "Auditron" })),
                         new XAttribute("method", "post"),
-                        new XElement("p",
+                        new XElement("fieldset",
+                            new XElement("legend", "Add Users to Printer Code"),
                             new XElement("input", new XAttribute("type", "hidden"), new XAttribute("name", "Action"), new XAttribute("value", "AddUser")),
                             new XElement("input", new XAttribute("type", "hidden"), new XAttribute("name", "UserId"), new XAttribute("value", userid)),
-                            new XElement("label", new XAttribute("for", "Username"), "Username(s):"),
-                            new XElement("input", new XAttribute("type", "text"), new XAttribute("name", "Username"))
-                        ),
-                        new XElement("input", new XAttribute("type", "submit"), new XAttribute("value", "Add Username(s)"))
+                            new XElement("label", new XAttribute("for", "Usernames"), "Username(s):"),
+                            new XElement("input", new XAttribute("type", "text"), new XAttribute("name", "Usernames")),
+                            new XElement("input", new XAttribute("type", "submit"), new XAttribute("value", "Add Username(s)"))
+                        )
                     )
                 )
             );
@@ -61,24 +63,27 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                     new XElement("p", new XElement("a", new XAttribute("href", Url.Route("default", new { controller = "Home" })), "Back to Cloud Print Server")),
                     new XElement("dl",
                         userids.SelectMany(uid => new object[]
-                            {
-                                new XElement("dt", "UserID: ", new XElement("a", new XAttribute("href", Url.Route("default", new { controller = "Auditron", userid = uid.Key })), uid.Key)),
-                                new XElement("dd", "Username(s): ", String.Join(", ", uid.Value))
-                            })
+                        {
+                            new XElement("dt", "UserID: ", new XElement("a", new XAttribute("href", Url.Route("default", new { controller = "Auditron", userid = uid.Key })), uid.Key)),
+                            new XElement("dd", "Username(s): ", String.Join(", ", uid.Value))
+                        })
                     ),
                     new XElement("form",
                         new XAttribute("action", Url.Route("default", new { controller = "Auditron" })),
                         new XAttribute("method", "post"),
-                        new XElement("input", new XAttribute("type", "hidden"), new XAttribute("name", "Action"), new XAttribute("value", "AddUserId")),
-                        new XElement("p",
-                            new XElement("label", new XAttribute("for", "UserId"), "Printer Code:"),
-                            new XElement("input", new XAttribute("type", "text"), new XAttribute("name", "UserId"))
-                        ),
-                        new XElement("p",
-                            new XElement("label", new XAttribute("for", "Username"), "Username(s):"),
-                            new XElement("input", new XAttribute("type", "text"), new XAttribute("name", "Username"))
-                        ),
-                        new XElement("input", new XAttribute("type", "submit"), new XAttribute("value", "Add Printer Code"))
+                        new XElement("fieldset",
+                            new XElement("legend", "Map UserId"),
+                            new XElement("input", new XAttribute("type", "hidden"), new XAttribute("name", "Action"), new XAttribute("value", "AddUserId")),
+                            new XElement("p",
+                                new XElement("label", new XAttribute("for", "UserId"), "Printer Code:"),
+                                new XElement("input", new XAttribute("type", "text"), new XAttribute("name", "UserId"))
+                            ),
+                            new XElement("p",
+                                new XElement("label", new XAttribute("for", "Usernames"), "Username(s):"),
+                                new XElement("input", new XAttribute("type", "text"), new XAttribute("name", "Usernames"))
+                            ),
+                            new XElement("input", new XAttribute("type", "submit"), new XAttribute("value", "Add Printer Code"))
+                        )
                     )
                 )
             );
