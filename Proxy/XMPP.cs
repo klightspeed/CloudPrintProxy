@@ -513,12 +513,12 @@ namespace TSVCEO.CloudPrint.Proxy
         protected string AuthMechanism { get; set; }
         protected string ResourceName { get; set; }
         protected string FullJID { get; set; }
+        protected bool IsReadyForSubscriptions { get; set; }
         protected Dictionary<string, Action<XElement, XMPP>> Subscriptions { get; set; }
         protected AutoResetEvent QueriesQueued { get; set; }
         protected AutoResetEvent ResponsesQueued { get; set; }
         protected AutoResetEvent MessagesQueued { get; set; }
         protected AutoResetEvent SubscriptionsQueued { get; set; }
-        protected ManualResetEvent ReadyForSubscriptions { get; set; }
         protected ManualResetEvent ReaderFaulted { get; set; }
         protected Exception ReaderException { get; set; }
         protected Exception WriterException { get; set; }
@@ -526,7 +526,7 @@ namespace TSVCEO.CloudPrint.Proxy
         protected ConcurrentDictionary<string, InfoQuery> RunningQueries { get; set; }
         protected ConcurrentQueue<InfoQueryResponse> QueuedResponses { get; set; }
         protected ConcurrentQueue<Message> QueuedMessages { get; set; }
-        protected ConcurrentQueue<InfoQuery> QueuedSubscriptions { get; set; }
+        protected ConcurrentQueue<Func<InfoQuery>> QueuedSubscriptions { get; set; }
         protected CancellationTokenSource CancelSource { get; set; }
         protected Thread ReaderThread { get; set; }
         protected Thread WriterThread { get; set; }
@@ -554,12 +554,13 @@ namespace TSVCEO.CloudPrint.Proxy
             this.InfoQueryID = new UniqueId();
             this.Subscriptions = new Dictionary<string, Action<XElement, XMPP>>();
             this.QueuedQueries = new ConcurrentQueue<InfoQuery>();
+            this.QueuedSubscriptions = new ConcurrentQueue<Func<InfoQuery>>();
             this.QueuedResponses = new ConcurrentQueue<InfoQueryResponse>();
             this.QueuedMessages = new ConcurrentQueue<Message>();
             this.QueriesQueued = new AutoResetEvent(false);
+            this.SubscriptionsQueued = new AutoResetEvent(false);
             this.ResponsesQueued = new AutoResetEvent(false);
             this.MessagesQueued = new AutoResetEvent(false);
-            this.ReadyForSubscriptions = new ManualResetEvent(false);
             this.ReaderFaulted = new ManualResetEvent(false);
             this.RunningQueries = new ConcurrentDictionary<string, InfoQuery>();
             this.CancelSource = new CancellationTokenSource();
@@ -591,6 +592,17 @@ namespace TSVCEO.CloudPrint.Proxy
         {
             QueuedQueries.Enqueue(new InfoQuery { Type = type, From = from, To = to, Content = content, Callback = callback });
             QueriesQueued.Set();
+        }
+
+        protected void EnqueueSubscription(Action<InfoQueryResponse, CancellationToken> callback, params XElement[] content)
+        {
+            EnqueueSubscription(callback, (IEnumerable<XElement>)content);
+        }
+
+        protected void EnqueueSubscription(Action<InfoQueryResponse, CancellationToken> callback, IEnumerable<XElement> content)
+        {
+            QueuedSubscriptions.Enqueue(() => new InfoQuery { Type = "set", From = null, To = BareJID, Content = content, Callback = callback });
+            SubscriptionsQueued.Set();
         }
 
         protected void EnqueueInfoQueryResponse(XElement iq)
@@ -681,22 +693,37 @@ namespace TSVCEO.CloudPrint.Proxy
         protected void ProcessQueuedQueries(XmlStream xml, CancellationToken canceltoken)
         {
             InfoQuery iq;
+
+            if (IsReadyForSubscriptions)
+            {
+                Func<InfoQuery> iqfactory;
+                while (!canceltoken.IsCancellationRequested && QueuedSubscriptions.TryDequeue(out iqfactory))
+                {
+                    ProcessInfoQuery(xml, iqfactory());
+                }
+            }
+
             while (!canceltoken.IsCancellationRequested && QueuedQueries.TryDequeue(out iq))
             {
-                int id = InfoQueryID.NewId();
-                xml.Write(
-                    new XElement(NamespaceClient + "iq",
-                        new XAttribute("type", iq.Type),
-                        iq.To == null ? null : new XAttribute("to", iq.To),
-                        new XAttribute("id", id),
-                        iq.Content
-                    )
-                );
-
-                RunningQueries[id.ToString()] = iq;
+                ProcessInfoQuery(xml, iq);
             }
 
             canceltoken.ThrowIfCancellationRequested();
+        }
+
+        protected void ProcessInfoQuery(XmlStream xml, InfoQuery iq)
+        {
+            int id = InfoQueryID.NewId();
+            xml.Write(
+                new XElement(NamespaceClient + "iq",
+                    new XAttribute("type", iq.Type),
+                    iq.To == null ? null : new XAttribute("to", iq.To),
+                    new XAttribute("id", id),
+                    iq.Content
+                )
+            );
+
+            RunningQueries[id.ToString()] = iq;
         }
 
         protected void ProcessQueuedResponses(XmlStream xml, CancellationToken canceltoken)
@@ -745,7 +772,7 @@ namespace TSVCEO.CloudPrint.Proxy
                 (iq, canceltoken) => {
                     if (iq.Type == "result")
                     {
-                        ReadyForSubscriptions.Set();
+                        IsReadyForSubscriptions = true;
                     }
                     else
                     {
@@ -794,7 +821,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
                 while (!canceltoken.IsCancellationRequested)
                 {
-                    switch (WaitHandle.WaitAny(new WaitHandle[] { canceltoken.WaitHandle, ReaderFaulted, QueriesQueued, ResponsesQueued, MessagesQueued }, 15000))
+                    switch (WaitHandle.WaitAny(new WaitHandle[] { canceltoken.WaitHandle, ReaderFaulted, QueriesQueued, IsReadyForSubscriptions ? SubscriptionsQueued : QueriesQueued, ResponsesQueued, MessagesQueued }, 15000))
                     {
                         case 0:
                             break;
@@ -804,9 +831,11 @@ namespace TSVCEO.CloudPrint.Proxy
                             ProcessQueuedQueries(xml, canceltoken);
                             break;
                         case 3:
+                            goto case 2;
+                        case 4:
                             ProcessQueuedResponses(xml, canceltoken);
                             break;
-                        case 4:
+                        case 5:
                             ProcessQueuedMessages(xml, canceltoken);
                             break;
                         case WaitHandle.WaitTimeout:
@@ -961,36 +990,25 @@ namespace TSVCEO.CloudPrint.Proxy
 
         public void Subscribe(string channel, Action<XElement, XMPP> callback)
         {
-            if (WriterThread == null)
-            {
-                throw new InvalidOperationException("XMPP not started");
-            }
-
-            if (WaitHandle.WaitAny(new WaitHandle[] { CancelSource.Token.WaitHandle, ReadyForSubscriptions }) == 1)
-            {
-                EnqueueInfoQuery(
-                    "set",
-                    null,
-                    BareJID,
-                    (iq, canceltoken) =>
+            EnqueueSubscription(
+                (iq, canceltoken) =>
+                {
+                    if (iq.Type == "result")
                     {
-                        if (iq.Type == "result")
-                        {
-                            Subscriptions[channel] = callback;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("Bad Response");
-                        }
-                    },
-                    new XElement(NamespacePush + "subscribe",
-                        new XElement(NamespacePush + "item",
-                            new XAttribute("channel", channel),
-                            new XAttribute("from", channel)
-                        )
+                        Subscriptions[channel] = callback;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Bad Response");
+                    }
+                },
+                new XElement(NamespacePush + "subscribe",
+                    new XElement(NamespacePush + "item",
+                        new XAttribute("channel", channel),
+                        new XAttribute("from", channel)
                     )
-                );
-            }
+                )
+            );
         }
 
         public void Stop(bool _throw)
