@@ -154,12 +154,13 @@ namespace TSVCEO.CloudPrint.Printing
 
         protected byte[] GetPJL(Dictionary<string, string> attribs)
         {
-            return "\x1E%-12345X".ToArray()
+            return Encoding.ASCII.GetBytes(
+                "\x1E%-12345X".ToArray()
                 .Concat("@PJL JOB MODE=PRINTER\r\n")
                 .Concat(attribs.SelectMany(kvp => "@PJL SET JOBATTR=\"@".ToArray().Concat(kvp.Key).Concat("=").Concat(kvp.Value).Concat("\"\r\n")))
                 .Concat("@PJL ENTER LANGUAGE=POSTSCRIPT\r\n")
-                .Cast<byte>()
-                .ToArray();
+                .ToArray()
+            );
         }
         
         protected void Print(CloudPrintJob job, bool runAsUser, bool usePJL, Dictionary<string, string> pjlattribs)
