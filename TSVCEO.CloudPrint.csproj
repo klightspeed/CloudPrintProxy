@@ -105,18 +105,17 @@
     <Compile Include="IPrintJobProcessor.cs" />
     <Compile Include="PrinterConfiguration.cs" />
     <Compile Include="Printing\AuditronPostscriptPrinter.cs" />
-    <Compile Include="Printing\Ghostscript.cs" />
+    <Compile Include="Printing\GhostscriptPrinter.cs" />
     <Compile Include="Printing\JobPrinter.cs" />
     <Compile Include="Printing\PopplerPostscriptPrinter.cs" />
     <Compile Include="Printing\WindowsPrintJobProcessor.cs" />
-    <Compile Include="Printing\WindowsRawPDFPrinter.cs" />
+    <Compile Include="Printing\WindowsPDFPrinter.cs" />
     <Compile Include="Printing\WindowsRawPrinter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Printing\CloudPrinterImpl.cs" />
     <Compile Include="Proxy\CloudPrintJobImpl.cs" />
     <Compile Include="Proxy\CloudPrintProxy.cs" />
     <Compile Include="Config.cs" />
-    <Compile Include="Printing\GhostscriptAPI.cs" />
     <Compile Include="Proxy\PrintProxyException.cs" />
     <Compile Include="CloudPrinter.cs" />
     <Compile Include="CloudPrintJob.cs" />
@@ -127,12 +126,15 @@
     </Compile>
     <Compile Include="Util\ConsoleLogger.cs" />
     <Compile Include="Util\Dll.cs" />
+    <Compile Include="Util\Ghostscript.cs" />
     <Compile Include="Util\HTTPHelper.cs" />
     <Compile Include="Util\JsonHelper.cs" />
     <Compile Include="Util\Logger.cs" />
     <Compile Include="Util\LogLevel.cs" />
     <Compile Include="Util\NtEventLogger.cs" />
     <Compile Include="Util\OAuthTicket.cs" />
+    <Compile Include="Util\PJLHelper.cs" />
+    <Compile Include="Util\PostscriptHelper.cs" />
     <Compile Include="Util\ProcessHelper.cs" />
     <Compile Include="Proxy\XMPP.cs" />
     <Compile Include="Service\GoogleCloudPrintProxyService.cs">

@@ -108,7 +108,7 @@ namespace TSVCEO.CloudPrint.Printing
                     message.From,
                     email,
                     subject,
-                    message
+                    message.Body
                 );
 
                 client.Send(message);
