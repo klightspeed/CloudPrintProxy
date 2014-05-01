@@ -12,12 +12,41 @@ using System.IO;
 using System.Net;
 using System.Net.Mail;
 using System.Security;
+using System.Windows.Threading;
+using System.Runtime.InteropServices;
 
 namespace TSVCEO.CloudPrint.Printing
 {
     public class WindowsPrintJobProcessor : IPrintJobProcessor
     {
         private const int RequeueTime = 15000;
+
+        #region interop methods
+
+        [Flags]
+        private enum PRINTER_ENUM
+        {
+            DEFAULT     = 0x00000001,
+            LOCAL       = 0x00000002,
+            CONNECTIONS = 0x00000004,
+            NAME        = 0x00000008,
+            REMOTE      = 0x00000010,
+            SHARED      = 0x00000020,
+            NETWORK     = 0x00000040
+        }
+
+        [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]
+        private struct PRINTER_INFO_4
+        {
+            public string PrinterName;
+            public string ServerName;
+            public uint Attributes;
+        }
+
+        [DllImport("winspool.drv", CharSet=CharSet.Unicode)]
+        private static extern bool EnumPrinters(PRINTER_ENUM Flags, string Name, int Level, IntPtr pPrinterEnum, int cbBuf, out int pcbNeeded, out int pcReturned);
+
+        #endregion
 
         #region private properties
 
@@ -29,6 +58,10 @@ namespace TSVCEO.CloudPrint.Printing
         private ConcurrentDictionary<string, ConcurrentQueue<CloudPrintJob>> UserDeferredJobs { get; set; }
         private Thread PrintQueueProcessorThread { get; set; }
         private CancellationTokenSource CancelTokenSource { get; set; }
+        private PrintServer PrintServer { get; set; }
+        private Thread PrintServerQuerierThread { get; set; }
+        private Dispatcher PrintServerQuerierDispatcher { get; set; }
+        private Dictionary<string, PrintQueue> PrintQueues { get; set; }
 
         #endregion
 
@@ -39,6 +72,9 @@ namespace TSVCEO.CloudPrint.Printing
             PrintJobQueue = new ConcurrentQueue<CloudPrintJob>();
             UserDeferredJobs = new ConcurrentDictionary<string, ConcurrentQueue<CloudPrintJob>>();
             CancelTokenSource = new CancellationTokenSource();
+            PrintQueues = new Dictionary<string, PrintQueue>();
+            PrintServerQuerierThread = new Thread(PrintServerQuerierThreadProc);
+            PrintServerQuerierThread.Start();
         }
 
         ~WindowsPrintJobProcessor()
@@ -67,11 +103,37 @@ namespace TSVCEO.CloudPrint.Printing
             PrintQueueProcessorThread = null;
             CancelTokenSource = null;
 
+            if (PrintServerQuerierThread != null)
+            {
+                if (PrintServerQuerierDispatcher != null)
+                {
+                    if (PrintServer != null)
+                    {
+                        PrintServerQuerierDispatcher.Invoke(new Action(PrintServer.Dispose));
+                        PrintServer = null;
+                    }
+
+                    PrintServerQuerierDispatcher.InvokeShutdown();
+                    PrintServerQuerierDispatcher = null;
+                }
+
+                PrintServerQuerierThread.Join();
+                PrintServerQuerierThread = null;
+            }
+
             if (disposing)
             {
                 Disposed = true;
                 GC.SuppressFinalize(this);
             }
+        }
+
+        [STAThread]
+        private void PrintServerQuerierThreadProc()
+        {
+            PrintServer = new LocalPrintServer();
+            PrintServerQuerierDispatcher = Dispatcher.CurrentDispatcher;
+            Dispatcher.Run();
         }
 
         private IEnumerable<CloudPrintJob> DequeueDeferredPrintQueueJobs(string username)
@@ -224,6 +286,76 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
+        private IEnumerable<CloudPrinter> DoGetPrintQueues()
+        {
+            PrintServer.Refresh();
+            Dictionary<string, PrintQueue> queuesToDispose = new Dictionary<string, PrintQueue>(PrintQueues);
+            
+            foreach (string printername in EnumerateLocalPrinterNames())
+            {
+                if (PrintQueues.ContainsKey(printername))
+                {
+                    queuesToDispose.Remove(printername);
+                }
+                else
+                {
+                    PrintQueues.Add(printername, PrintServer.GetPrintQueue(printername));
+                }
+            }
+
+            foreach (KeyValuePair<string, PrintQueue> pq_kvp in queuesToDispose)
+            {
+                PrintQueues.Remove(pq_kvp.Key);
+                pq_kvp.Value.Dispose();
+            }
+
+            return PrintQueues.Values.Where(q => q.IsShared).Select(q => new CloudPrinterImpl(q)).ToArray();
+        }
+
+        private IEnumerable<string> EnumerateLocalPrinterNames()
+        {
+            int cbneeded = 0;
+            int nents = 0;
+            int bufsize = 0;
+            IntPtr buf = IntPtr.Zero;
+            PRINTER_INFO_4[] printerinfoarray;
+            try
+            {
+                while (!EnumPrinters(PRINTER_ENUM.LOCAL | PRINTER_ENUM.SHARED, null, 4, buf, bufsize, out cbneeded, out nents))
+                {
+                    if (cbneeded == bufsize)
+                    {
+                        throw new InvalidOperationException("Unable to enumerate printers");
+                    }
+
+                    if (buf != IntPtr.Zero)
+                    {
+                        Marshal.FreeHGlobal(buf);
+                    }
+
+                    buf = Marshal.AllocHGlobal(cbneeded);
+                    bufsize = cbneeded;
+                }
+
+
+                printerinfoarray = new PRINTER_INFO_4[nents];
+
+                for (int i = 0; i < nents; i++)
+                {
+                    printerinfoarray[i] = (PRINTER_INFO_4)Marshal.PtrToStructure(buf + i * Marshal.SizeOf(typeof(PRINTER_INFO_4)), typeof(PRINTER_INFO_4));
+                }
+
+                return printerinfoarray.Select(pi => pi.PrinterName).ToArray();
+            }
+            finally
+            {
+                if (buf != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(buf);
+                }
+            }
+        }
+
         #endregion
 
         #region public methods
@@ -262,10 +394,7 @@ namespace TSVCEO.CloudPrint.Printing
 
         public IEnumerable<CloudPrinter> GetPrintQueues()
         {
-            using (var server = new LocalPrintServer())
-            {
-                return server.GetPrintQueues().Where(q => q.IsShared).Select(q => new CloudPrinterImpl(q));
-            }
+            return PrintServerQuerierDispatcher.Invoke(new Func<IEnumerable<CloudPrinter>>(DoGetPrintQueues)) as IEnumerable<CloudPrinter>;
         }
 
         public IEnumerable<CloudPrintJob> GetQueuedJobs(string username)
