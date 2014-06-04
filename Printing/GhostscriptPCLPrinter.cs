@@ -58,37 +58,32 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        protected void PrintData(string username, PrintTicket ticket, string printername, string tempfile, string jobname, string datafile, string driver, Dictionary<string, string> pjljobattribs)
+        protected void PrintData(string username, PrintTicket ticket, string printername, string tempfile, string jobname, string datafile, Dictionary<string, string> pjljobattribs)
         {
             using (Ghostscript gs = new Ghostscript())
             {
-                if (tempfile != null && driver != null)
+                Dictionary<string, string> pjlsettings = new Dictionary<string,string>
                 {
-                    Dictionary<string, string> pjlsettings = new Dictionary<string,string>
-                    {
-                        { "DUPLEX", ticket.Duplexing == Duplexing.OneSided ? "OFF" : "ON" },
-                        { "BINDING", ticket.Duplexing == Duplexing.TwoSidedShortEdge ? "SHORTEDGE" : "LONGEDGE" },
-                        { "COPIES", (ticket.CopyCount ?? 1).ToString() },
-                        { "RENDERMODE", ticket.OutputColor == OutputColor.Color ? "COLOR" : "GRAYSCALE" },
-                        { "STAPLE", GetStapling(ticket.Stapling) },
-                        { "PUNCH", "NONE" }
-                    };
+                    { "DUPLEX", ticket.Duplexing == Duplexing.OneSided ? "OFF" : "ON" },
+                    { "BINDING", ticket.Duplexing == Duplexing.TwoSidedShortEdge ? "SHORTEDGE" : "LONGEDGE" },
+                    { "COPIES", (ticket.CopyCount ?? 1).ToString() },
+                    { "RENDERMODE", ticket.OutputColor == OutputColor.Color ? "COLOR" : "GRAYSCALE" },
+                    { "STAPLE", GetStapling(ticket.Stapling) },
+                    { "PUNCH", "NONE" }
+                };
 
-                    gs.ProcessData(ticket, tempfile, datafile, driver, null, null);
+                string driver = ticket.OutputColor == OutputColor.Color ? "pxlcolor" : "pxlmono";
 
-                    WindowsRawPrintJobInfo jobinfo = ProcessPCL(File.ReadAllBytes(tempfile), pjljobattribs, pjlsettings);
+                gs.ProcessData(ticket, tempfile, datafile, driver, null, null);
 
-                    jobinfo.JobName = jobname;
-                    jobinfo.PrinterName = printername;
-                    jobinfo.UserName = username;
-                    jobinfo.RunAsUser = true;
+                WindowsRawPrintJobInfo jobinfo = ProcessPCL(File.ReadAllBytes(tempfile), pjljobattribs, pjlsettings);
 
-                    WindowsRawPrinter.PrintRaw(jobinfo);
-                }
-                else
-                {
-                    gs.PrintData(username, ticket, printername, jobname, datafile, new string[] { });
-                }
+                jobinfo.JobName = jobname;
+                jobinfo.PrinterName = printername;
+                jobinfo.UserName = username;
+                jobinfo.RunAsUser = true;
+
+                WindowsRawPrinter.PrintRaw(jobinfo);
             }
         }
 
@@ -108,8 +103,7 @@ namespace TSVCEO.CloudPrint.Printing
             PrintTicket printTicket = job.GetPrintTicket();
             string printDataFile = job.GetPrintDataFile();
             string printOutputFile = printDataFile + ".raw";
-            string printerDriver = Config.GhostscriptPrinterDrivers[job.Printer.Name];
-            PrintData(job.Username, printTicket, job.Printer.Name, printOutputFile, job.JobTitle, printDataFile, printerDriver, null);
+            PrintData(job.Username, printTicket, job.Printer.Name, printOutputFile, job.JobTitle, printDataFile, null);
 
             if (File.Exists(printOutputFile))
             {
