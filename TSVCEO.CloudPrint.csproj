@@ -106,6 +106,7 @@
     <Compile Include="IPrintJobProcessor.cs" />
     <Compile Include="PrinterConfiguration.cs" />
     <Compile Include="Printing\AuditronPostscriptPrinter.cs" />
+    <Compile Include="Printing\GhostscriptPCLPrinter.cs" />
     <Compile Include="Printing\GhostscriptPrinter.cs" />
     <Compile Include="Printing\JobPrinter.cs" />
     <Compile Include="Printing\PopplerPostscriptPrinter.cs" />
@@ -134,6 +135,7 @@
     <Compile Include="Util\LogLevel.cs" />
     <Compile Include="Util\NtEventLogger.cs" />
     <Compile Include="Util\OAuthTicket.cs" />
+    <Compile Include="Util\PCLPrintJob.cs" />
     <Compile Include="Util\PJLHelper.cs" />
     <Compile Include="Util\PostscriptHelper.cs" />
     <Compile Include="Util\ProcessHelper.cs" />
