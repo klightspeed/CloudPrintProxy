@@ -36,7 +36,7 @@ namespace TSVCEO.CloudPrint.Printing
             return stdout.ToArray();
         }
 
-        protected void Print(CloudPrintJob job, bool runAsUser, bool usePJL, Dictionary<string, string> pjlattribs)
+        protected void Print(CloudPrintJob job, bool runAsUser, bool usePJL, Dictionary<string, string> pjljobattribs, Dictionary<string, string> pjlsettings)
         {
             PrintTicket ticket = job.GetPrintTicket();
             List<byte> pagesetup = PostscriptHelper.SetPageDeviceCommand(ticket).SelectMany(w =>
@@ -56,7 +56,7 @@ namespace TSVCEO.CloudPrint.Printing
 
             if (usePJL)
             {
-                prologue.AddRange(PJLHelper.GetPJL(pjlattribs, "POSTSCRIPT"));
+                prologue.AddRange(PJLHelper.GetPJL(pjljobattribs, pjlsettings, "POSTSCRIPT"));
             }
 
             byte[] pdfsetup = Encoding.ASCII.GetBytes("false pdfSetup");
@@ -137,7 +137,7 @@ namespace TSVCEO.CloudPrint.Printing
 
         public override void Print(CloudPrintJob job)
         {
-            Print(job, true, false, null);
+            Print(job, true, false, null, null);
         }
 
         #endregion
