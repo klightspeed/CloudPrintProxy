@@ -251,6 +251,16 @@ namespace TSVCEO.CloudPrint.Util
             ProcessData(username, ticket, null, datafile, inargs, extraargs, devsetup);
         }
 
+        public void PrintData(string username, PrintTicket ticket, string printername, string jobname, byte[] data, string[] inargs)
+        {
+            string[] devsetup = SetDeviceCommand("%printer%" + printername, jobname, "mswinpr2").ToArray();
+            string[] extraargs = new string[] { "-dNOSAFER" };
+
+            SetupUserPrinter(username, printername);
+
+            ProcessData(username, ticket, data, inargs, extraargs, devsetup);
+        }
+
         public void ProcessData(PrintTicket ticket, string tempfile, string datafile, string driver, string[] inargs, string[] devsetup)
         {
             string[] extraargs = new string[] { "-sDEVICE=" + driver, "-sOutputFile=" + tempfile };

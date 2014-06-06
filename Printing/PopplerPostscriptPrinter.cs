@@ -24,7 +24,7 @@ namespace TSVCEO.CloudPrint.Printing
             }).ToList();
             pagesetup.Add((byte)'\n');
 
-            byte[] psdata = PostscriptHelper.FromPDF(File.ReadAllBytes(job.GetPrintDataFile()));
+            byte[] psdata = PostscriptHelper.FromPDF(job.GetPrintData());
 
             bool inprologue = true;
             List<byte[]> pages = new List<byte[]>();

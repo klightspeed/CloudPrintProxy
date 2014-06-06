@@ -59,7 +59,7 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        protected void PrintData(string username, PrintTicket ticket, string printername, string tempfile, string jobname, string datafile, Dictionary<string, string> pjljobattribs)
+        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, byte[] data, Dictionary<string, string> pjljobattribs)
         {
             using (Ghostscript gs = new Ghostscript())
             {
@@ -75,13 +75,10 @@ namespace TSVCEO.CloudPrint.Printing
 
                 string driver = ticket.OutputColor == OutputColor.Color ? "pxlcolor" : "pxlmono";
 
-                byte[] postscript = PostscriptHelper.FromPDF(File.ReadAllBytes(datafile));
-                File.WriteAllBytes(datafile + ".ps", postscript);
+                byte[] postscript = PostscriptHelper.FromPDF(data);
                 byte[] pcldata = gs.ProcessData(ticket, postscript, driver, null, null);
-                File.WriteAllBytes(datafile + ".pcl", pcldata);
 
                 WindowsRawPrintJobInfo jobinfo = ProcessPCL(pcldata, pjljobattribs, pjlsettings);
-                File.WriteAllBytes(datafile + ".processed.pcl", jobinfo.Prologue.Concat(jobinfo.PageData.Aggregate((IEnumerable<byte>)(new byte[0]), (a, p) => a.Concat(p))).Concat(jobinfo.Epilogue).ToArray());
 
                 jobinfo.JobName = jobname;
                 jobinfo.PrinterName = printername;
@@ -106,16 +103,8 @@ namespace TSVCEO.CloudPrint.Printing
         public override void Print(CloudPrintJob job)
         {
             PrintTicket printTicket = job.GetPrintTicket();
-            string printDataFile = job.GetPrintDataFile();
-            string printOutputFile = printDataFile + ".raw";
-            PrintData(job.Username, printTicket, job.Printer.Name, printOutputFile, job.JobTitle, printDataFile, null);
-
-            if (File.Exists(printOutputFile))
-            {
-#if !DEBUG
-                File.Delete(printOutputFile);
-#endif
-            }
+            byte[] printData = job.GetPrintData();
+            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printData, null);
         }
 
         #endregion

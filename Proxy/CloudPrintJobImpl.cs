@@ -193,6 +193,11 @@ namespace TSVCEO.CloudPrint.Proxy
             }
         }
 
+        public override byte[] GetPrintData()
+        {
+            return File.ReadAllBytes(_PrintDataFileName);
+        }
+
         public override string GetPrintDataFile()
         {
             return _PrintDataFileName;

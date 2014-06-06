@@ -30,20 +30,20 @@ namespace TSVCEO.CloudPrint.Printing
 
         #region protected methods
 
-        protected void PrintData(string username, PrintTicket ticket, string printername, string tempfile, string jobname, string datafile, string driver)
+        protected void PrintData(string username, PrintTicket ticket, string printername, string jobname, byte[] data, string driver)
         {
             using (Ghostscript gs = new Ghostscript())
             {
-                if (tempfile != null && driver != null)
+                if (driver != null)
                 {
-                    gs.ProcessData(ticket, tempfile, datafile, driver, null, null);
+                    byte[] postscript = gs.ProcessData(ticket, data, driver, null, null);
 
                     WindowsRawPrintJobInfo jobinfo = new WindowsRawPrintJobInfo
                     {
                         JobName = jobname,
                         PrinterName = printername,
                         UserName = username,
-                        RawPrintData = File.ReadAllBytes(tempfile),
+                        RawPrintData = postscript,
                         RunAsUser = true
                     };
 
@@ -51,7 +51,7 @@ namespace TSVCEO.CloudPrint.Printing
                 }
                 else
                 {
-                    gs.PrintData(username, ticket, printername, jobname, datafile, new string[] { });
+                    gs.PrintData(username, ticket, printername, jobname, data, new string[] { });
                 }
             }
         }
@@ -70,17 +70,9 @@ namespace TSVCEO.CloudPrint.Printing
         public override void Print(CloudPrintJob job)
         {
             PrintTicket printTicket = job.GetPrintTicket();
-            string printDataFile = job.GetPrintDataFile();
-            string printOutputFile = printDataFile + ".raw";
+            byte[] printData = job.GetPrintData();
             string printerDriver = Config.GhostscriptPrinterDrivers[job.Printer.Name];
-            PrintData(job.Username, printTicket, job.Printer.Name, printOutputFile, job.JobTitle, printDataFile, printerDriver);
-
-            if (File.Exists(printOutputFile))
-            {
-#if !DEBUG
-                File.Delete(printOutputFile);
-#endif
-            }
+            PrintData(job.Username, printTicket, job.Printer.Name, job.JobTitle, printData, printerDriver);
         }
 
         #endregion

@@ -27,8 +27,7 @@ namespace TSVCEO.CloudPrint.Printing
             using (Ghostscript gs = new Ghostscript())
             {
                 PrintTicket printTicket = job.GetPrintTicket();
-                string printDataFile = job.GetPrintDataFile();
-                string printOutputFile = printDataFile + ".processed.pdf";
+                byte[] printData = job.GetPrintData();
                 List<string> args = new List<string>();
 
                 args.Add("-dAutoRotatePages=/None");
@@ -39,9 +38,7 @@ namespace TSVCEO.CloudPrint.Printing
                     args.Add("-dProcessColorModel=/DeviceGray");
                 }
 
-                gs.ProcessData(printTicket, printOutputFile, printDataFile, "pdfwrite", args.ToArray(), null);
-
-                byte[] printdata = File.ReadAllBytes(printOutputFile);
+                byte[] printdata = gs.ProcessData(printTicket, printData, "pdfwrite", args.ToArray(), null);
 
                 WindowsRawPrintJobInfo ji = new WindowsRawPrintJobInfo
                 {
