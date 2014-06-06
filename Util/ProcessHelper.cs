@@ -107,11 +107,24 @@ namespace TSVCEO.CloudPrint.Util
             }
         }
 
+        protected static void CopyStreamAndClose(Stream instream, Stream outstream)
+        {
+            try
+            {
+                instream.CopyTo(outstream);
+                outstream.Flush();
+                outstream.Close();
+            }
+            catch
+            {
+            }
+        }
+
         public static int RunProcessAsUser(string username, string domain, SecureString password, Stream stdin, Stream stdout, Stream stderr, string workdir, string exename, string[] args)
         {
             using (Process proc = CreateProcessAsUser(username, domain, password, workdir, exename, args))
             {
-                Thread stdinthread = new Thread(new ThreadStart(() => CopyStream(stdin, proc.StandardInput.BaseStream)));
+                Thread stdinthread = new Thread(new ThreadStart(() => CopyStreamAndClose(stdin, proc.StandardInput.BaseStream)));
                 Thread stdoutthread = new Thread(new ThreadStart(() => CopyStream(proc.StandardOutput.BaseStream, stdout)));
                 Thread stderrthread = new Thread(new ThreadStart(() => CopyStream(proc.StandardError.BaseStream, stderr)));
 

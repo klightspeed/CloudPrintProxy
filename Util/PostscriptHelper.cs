@@ -3,11 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Printing;
+using System.IO;
+using System.Reflection;
 
 namespace TSVCEO.CloudPrint.Util
 {
     public static class PostscriptHelper
     {
+        public static byte[] FromPDF(byte[] PDFData)
+        {
+            MemoryStream stdin = new MemoryStream(PDFData);
+            MemoryStream stdout = new MemoryStream();
+            MemoryStream stderr = new MemoryStream();
+
+            int retval = Util.ProcessHelper.RunProcess(
+                stdin,
+                stdout,
+                stderr,
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\\poppler",
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\\poppler\\pdftops.exe",
+                new string[] { "-", "-" }
+            );
+
+            if (retval != 0)
+            {
+                throw new InvalidOperationException(String.Format("pstopdf returned status code {0}\n\n{1}", retval, Encoding.UTF8.GetString(stderr.ToArray())));
+            }
+
+            return stdout.ToArray();
+        }
+
         public static string EscapePostscriptString(string str)
         {
             StringBuilder sb = new StringBuilder();

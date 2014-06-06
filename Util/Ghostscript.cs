@@ -198,6 +198,45 @@ namespace TSVCEO.CloudPrint.Util
             }
         }
 
+        protected byte[] ProcessData(string username, PrintTicket ticket, byte[] data, string[] inargs, string[] extraargs, string[] devsetup)
+        {
+            string[] pagesetup = PostscriptHelper.SetPageDeviceCommand(ticket).ToArray();
+
+            string[] args = new string[] { "-dNOPAUSE", "-dBATCH" }
+                .Concat(inargs ?? new string[] { })
+                .Concat(extraargs ?? new string[] { })
+                .Concat(new string[] { "-sOutputFile=%stdout" })
+                .Concat(new string[] { "-c" })
+                .Concat(devsetup ?? new string[] { })
+                .Concat(pagesetup)
+                .Concat(new string[] { "-" })
+                .ToArray();
+
+            MemoryStream outstream = new MemoryStream();
+            MemoryStream errstream = new MemoryStream();
+            MemoryStream instream = new MemoryStream(data);
+
+            int exitcode;
+            if (username != null)
+            {
+                exitcode = RunCommandAsUser(username, args, instream, outstream, errstream);
+            }
+            else
+            {
+                exitcode = RunCommand(args, instream, outstream, errstream);
+            }
+
+            string errstr = Encoding.UTF8.GetString(errstream.ToArray());
+
+            if (exitcode != 0)
+            {
+                Logger.Log(LogLevel.Warning, "Ghostscript returned code {0}\n\nError:\n{1}", exitcode, errstr);
+                throw new InvalidOperationException(String.Format("Ghostscript error {0}\n{1}", exitcode, errstr));
+            }
+
+            return outstream.ToArray();
+        }
+
         #endregion
 
         #region public methods
@@ -217,6 +256,13 @@ namespace TSVCEO.CloudPrint.Util
             string[] extraargs = new string[] { "-sDEVICE=" + driver, "-sOutputFile=" + tempfile };
 
             ProcessData(null, ticket, tempfile, datafile, inargs, extraargs, devsetup);
+        }
+
+        public byte[] ProcessData(PrintTicket ticket, byte[] data, string driver, string[] inargs, string[] devsetup)
+        {
+            string[] extraargs = new string[] { "-sDEVICE=" + driver };
+
+            return ProcessData(null, ticket, data, inargs, extraargs, devsetup);
         }
 
         public void Dispose()

@@ -13,29 +13,6 @@ namespace TSVCEO.CloudPrint.Printing
     {
         #region Protected Methods
 
-        protected byte[] ToPostscript(CloudPrintJob job)
-        {
-            MemoryStream stdin = new MemoryStream();
-            MemoryStream stdout = new MemoryStream();
-            MemoryStream stderr = new MemoryStream();
-
-            int retval = Util.ProcessHelper.RunProcess(
-                stdin,
-                stdout,
-                stderr,
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\\poppler",
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\\poppler\\pdftops.exe",
-                new string[] { job.GetPrintDataFile(), "-" }
-            );
-
-            if (retval != 0)
-            {
-                throw new InvalidOperationException(String.Format("pstopdf returned status code {0}\n\n{1}", retval, Encoding.UTF8.GetString(stderr.ToArray())));
-            }
-
-            return stdout.ToArray();
-        }
-
         protected void Print(CloudPrintJob job, bool runAsUser, bool usePJL, Dictionary<string, string> pjljobattribs, Dictionary<string, string> pjlsettings)
         {
             PrintTicket ticket = job.GetPrintTicket();
@@ -47,7 +24,7 @@ namespace TSVCEO.CloudPrint.Printing
             }).ToList();
             pagesetup.Add((byte)'\n');
 
-            byte[] psdata = ToPostscript(job);
+            byte[] psdata = PostscriptHelper.FromPDF(File.ReadAllBytes(job.GetPrintDataFile()));
 
             bool inprologue = true;
             List<byte[]> pages = new List<byte[]>();

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Printing;
+using System.Reflection;
 using Microsoft.Win32;
 using System.Security.AccessControl;
 using TSVCEO.CloudPrint.Util;
@@ -74,9 +75,13 @@ namespace TSVCEO.CloudPrint.Printing
 
                 string driver = ticket.OutputColor == OutputColor.Color ? "pxlcolor" : "pxlmono";
 
-                gs.ProcessData(ticket, tempfile, datafile, driver, null, null);
+                byte[] postscript = PostscriptHelper.FromPDF(File.ReadAllBytes(datafile));
+                File.WriteAllBytes(datafile + ".ps", postscript);
+                byte[] pcldata = gs.ProcessData(ticket, postscript, driver, null, null);
+                File.WriteAllBytes(datafile + ".pcl", pcldata);
 
-                WindowsRawPrintJobInfo jobinfo = ProcessPCL(File.ReadAllBytes(tempfile), pjljobattribs, pjlsettings);
+                WindowsRawPrintJobInfo jobinfo = ProcessPCL(pcldata, pjljobattribs, pjlsettings);
+                File.WriteAllBytes(datafile + ".processed.pcl", jobinfo.Prologue.Concat(jobinfo.PageData.Aggregate((IEnumerable<byte>)(new byte[0]), (a, p) => a.Concat(p))).Concat(jobinfo.Epilogue).ToArray());
 
                 jobinfo.JobName = jobname;
                 jobinfo.PrinterName = printername;
