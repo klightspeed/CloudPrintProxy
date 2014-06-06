@@ -159,45 +159,6 @@ namespace TSVCEO.CloudPrint.Util
             }
         }
         
-        protected void ProcessData(string username, PrintTicket ticket, string tempfile, string datafile, string[] inargs, string[] extraargs, string[] devsetup)
-        {
-            string[] pagesetup = PostscriptHelper.SetPageDeviceCommand(ticket).ToArray();
-
-            string[] args = new string[] { "-dNOPAUSE", "-dBATCH" }
-                .Concat(inargs ?? new string[] { })
-                .Concat(extraargs ?? new string[] { })
-                .Concat(new string[] { "-c" })
-                .Concat(devsetup ?? new string[] { })
-                .Concat(pagesetup)
-                .Concat(new string[] { "-f", datafile })
-                .ToArray();
-
-            File.WriteAllText(datafile + ".args", ProcessHelper.CreateCommandArguments(args));
-
-            MemoryStream outstream = new MemoryStream();
-            MemoryStream errstream = new MemoryStream();
-            MemoryStream instream = new MemoryStream(new byte[0]);
-
-            int exitcode;
-            if (username != null)
-            {
-                exitcode = RunCommandAsUser(username, args, instream, outstream, errstream);
-            }
-            else
-            {
-                exitcode = RunCommand(args, instream, outstream, errstream);
-            }
-
-            string outstr = Encoding.UTF8.GetString(outstream.ToArray());
-            string errstr = Encoding.UTF8.GetString(errstream.ToArray());
-
-            if (exitcode != 0)
-            {
-                Logger.Log(LogLevel.Warning, "Ghostscript returned code {0}\n\nOutput:\n{1}\n\nError:\n{2}", exitcode, outstr, errstr);
-                throw new InvalidOperationException(String.Format("Ghostscript error {0}\n{1}", exitcode, errstr));
-            }
-        }
-
         protected byte[] ProcessData(string username, PrintTicket ticket, byte[] data, string[] inargs, string[] extraargs, string[] devsetup)
         {
             string[] pagesetup = PostscriptHelper.SetPageDeviceCommand(ticket).ToArray();
@@ -241,16 +202,6 @@ namespace TSVCEO.CloudPrint.Util
 
         #region public methods
 
-        public void PrintData(string username, PrintTicket ticket, string printername, string jobname, string datafile, string[] inargs)
-        {
-            string[] devsetup = SetDeviceCommand("%printer%" + printername, jobname, "mswinpr2").ToArray();
-            string[] extraargs = new string[] { "-dNOSAFER" };
-
-            SetupUserPrinter(username, printername);
-
-            ProcessData(username, ticket, null, datafile, inargs, extraargs, devsetup);
-        }
-
         public void PrintData(string username, PrintTicket ticket, string printername, string jobname, byte[] data, string[] inargs)
         {
             string[] devsetup = SetDeviceCommand("%printer%" + printername, jobname, "mswinpr2").ToArray();
@@ -259,13 +210,6 @@ namespace TSVCEO.CloudPrint.Util
             SetupUserPrinter(username, printername);
 
             ProcessData(username, ticket, data, inargs, extraargs, devsetup);
-        }
-
-        public void ProcessData(PrintTicket ticket, string tempfile, string datafile, string driver, string[] inargs, string[] devsetup)
-        {
-            string[] extraargs = new string[] { "-sDEVICE=" + driver, "-sOutputFile=" + tempfile };
-
-            ProcessData(null, ticket, tempfile, datafile, inargs, extraargs, devsetup);
         }
 
         public byte[] ProcessData(PrintTicket ticket, byte[] data, string driver, string[] inargs, string[] devsetup)

@@ -198,11 +198,6 @@ namespace TSVCEO.CloudPrint.Proxy
             return File.ReadAllBytes(_PrintDataFileName);
         }
 
-        public override string GetPrintDataFile()
-        {
-            return _PrintDataFileName;
-        }
-
         public CloudPrintJobImpl(CloudPrintProxy proxy, CloudPrinter printer, dynamic job)
         {
             this._Proxy = proxy;

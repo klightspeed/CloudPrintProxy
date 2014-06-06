@@ -40,7 +40,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
             {
                 HttpResponseMessage response = new HttpResponseMessage
                 {
-                    Content = new StreamContent(File.Open(job.GetPrintDataFile(), FileMode.Open, FileAccess.Read, FileShare.Read))
+                    Content = new StreamContent(new MemoryStream(job.GetPrintData()))
                 };
                 response.Content.Headers.ContentType.MediaType = "application/pdf";
 

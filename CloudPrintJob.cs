@@ -31,7 +31,6 @@ namespace TSVCEO.CloudPrint
         public virtual void SetError(string ErrorCode, string ErrorMessage) { throw new NotImplementedException(); }
         public virtual PrintTicket GetPrintTicket() { throw new NotImplementedException(); }
         public virtual byte[] GetPrintData() { throw new NotImplementedException(); }
-        public virtual string GetPrintDataFile() { throw new NotImplementedException(); }
         public virtual void SetDeliveryAttempted() { throw new NotImplementedException(); }
     }
 }
