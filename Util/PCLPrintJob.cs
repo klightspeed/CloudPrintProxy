@@ -301,13 +301,15 @@ namespace TSVCEO.CloudPrint.Util
                 while (pos < rawdata.Length)
                 {
                     byte tag = rawdata[pos];
-                    pos++;
-
+                    
                     if (tag == 27)
                     {
                         break;
                     }
-                    else if (tag >= 0x41 && tag <= 0xBF)
+
+                    pos++;
+
+                    if (tag >= 0x41 && tag <= 0xBF)
                     {
                         if (tag == 0x43)
                         {
