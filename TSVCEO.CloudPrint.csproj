@@ -135,6 +135,7 @@
     <Compile Include="Util\LogLevel.cs" />
     <Compile Include="Util\NtEventLogger.cs" />
     <Compile Include="Util\OAuthTicket.cs" />
+    <Compile Include="Util\PaginatedPrintJob.cs" />
     <Compile Include="Util\PCLPrintJob.cs" />
     <Compile Include="Util\PJLHelper.cs" />
     <Compile Include="Util\PostscriptHelper.cs" />

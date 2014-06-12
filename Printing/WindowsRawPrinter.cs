@@ -29,9 +29,7 @@ namespace TSVCEO.CloudPrint.Printing
         public string JobName { get; set; }
         public string UserName { get; set; }
         public byte[] RawPrintData { get; set; }
-        public byte[] Prologue { get; set; }
-        public byte[][] PageData { get; set; }
-        public byte[] Epilogue { get; set; }
+        public PaginatedPrintJob PagedData { get; set; }
         public byte[] PrintTicketXML { get; set; }
         public bool RunAsUser { get; set; }
 
@@ -313,24 +311,27 @@ namespace TSVCEO.CloudPrint.Printing
                         WritePrinter(hPrinter, jobinfo.RawPrintData);
                     }
 
-                    if (jobinfo.Prologue != null)
+                    if (jobinfo.PagedData != null)
                     {
-                        WritePrinter(hPrinter, jobinfo.Prologue);
-                    }
-
-                    if (jobinfo.PageData != null)
-                    {
-                        foreach (byte[] pagedata in jobinfo.PageData)
+                        if (jobinfo.PagedData.Prologue != null)
                         {
-                            StartPagePrinter(hPrinter);
-                            WritePrinter(hPrinter, pagedata);
-                            EndPagePrinter(hPrinter);
+                            WritePrinter(hPrinter, jobinfo.PagedData.Prologue);
                         }
-                    }
 
-                    if (jobinfo.Epilogue != null)
-                    {
-                        WritePrinter(hPrinter, jobinfo.Epilogue);
+                        if (jobinfo.PagedData.PageData != null)
+                        {
+                            foreach (byte[] pagedata in jobinfo.PagedData.PageData)
+                            {
+                                StartPagePrinter(hPrinter);
+                                WritePrinter(hPrinter, pagedata);
+                                EndPagePrinter(hPrinter);
+                            }
+                        }
+
+                        if (jobinfo.PagedData.Epilogue != null)
+                        {
+                            WritePrinter(hPrinter, jobinfo.PagedData.Epilogue);
+                        }
                     }
 
                     if (!EndDocPrinter(hPrinter))

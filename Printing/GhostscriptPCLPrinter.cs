@@ -31,10 +31,10 @@ namespace TSVCEO.CloudPrint.Printing
 
         #region protected methods
 
-        protected WindowsRawPrintJobInfo ProcessPCL(byte[] rawdata, Dictionary<string, string> pjljobattribs, Dictionary<string, string> pjlsettings)
+        protected PaginatedPrintJob ProcessPCL(byte[] rawdata, Dictionary<string, string> pjljobattribs, Dictionary<string, string> pjlsettings)
         {
             PCLPrintJob pcljob = new PCLPrintJob(rawdata);
-            return new WindowsRawPrintJobInfo
+            return new PaginatedPrintJob
             {
                 Prologue = PJLHelper.GetPJL(pjljobattribs, pjlsettings, "PCLXL").Concat(pcljob.Prologue).ToArray(),
                 PageData = pcljob.PageData.ToArray(),
@@ -75,15 +75,19 @@ namespace TSVCEO.CloudPrint.Printing
 
                 string driver = ticket.OutputColor == OutputColor.Color ? "pxlcolor" : "pxlmono";
 
-                byte[] postscript = PostscriptHelper.FromPDF(data);
+                PaginatedPrintJob psjob = PostscriptHelper.FromPDF(data, ticket);
+                byte[] postscript = psjob.GetData();
                 byte[] pcldata = gs.ProcessData(ticket, postscript, driver, null, null);
 
-                WindowsRawPrintJobInfo jobinfo = ProcessPCL(pcldata, pjljobattribs, pjlsettings);
-
-                jobinfo.JobName = jobname;
-                jobinfo.PrinterName = printername;
-                jobinfo.UserName = username;
-                jobinfo.RunAsUser = true;
+                PaginatedPrintJob pcljob = ProcessPCL(pcldata, pjljobattribs, pjlsettings);
+                WindowsRawPrintJobInfo jobinfo = new WindowsRawPrintJobInfo
+                {
+                    PagedData = pcljob,
+                    JobName = jobname,
+                    PrinterName = printername,
+                    UserName = username,
+                    RunAsUser = true
+                };
 
                 WindowsRawPrinter.PrintRaw(jobinfo);
             }
