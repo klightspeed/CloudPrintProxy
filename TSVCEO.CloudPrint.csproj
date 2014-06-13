@@ -106,13 +106,14 @@
     <Compile Include="IPrintJobProcessor.cs" />
     <Compile Include="PrinterConfiguration.cs" />
     <Compile Include="Printing\AuditronPostscriptPrinter.cs" />
-    <Compile Include="Printing\GhostscriptPCLPrinter.cs" />
+    <Compile Include="Printing\GhostscriptPCLXLPrinter.cs" />
     <Compile Include="Printing\GhostscriptPrinter.cs" />
     <Compile Include="Printing\JobPrinter.cs" />
     <Compile Include="Printing\PopplerPostscriptPrinter.cs" />
+    <Compile Include="Printing\PrintJob.cs" />
     <Compile Include="Printing\WindowsPrintJobProcessor.cs" />
     <Compile Include="Printing\WindowsPDFPrinter.cs" />
-    <Compile Include="Printing\WindowsRawPrinter.cs" />
+    <Compile Include="Printing\WindowsRawPrintJob.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Printing\CloudPrinterImpl.cs" />
     <Compile Include="Proxy\CloudPrintJobImpl.cs" />
@@ -135,8 +136,8 @@
     <Compile Include="Util\LogLevel.cs" />
     <Compile Include="Util\NtEventLogger.cs" />
     <Compile Include="Util\OAuthTicket.cs" />
-    <Compile Include="Util\PaginatedPrintJob.cs" />
-    <Compile Include="Util\PCLPrintJob.cs" />
+    <Compile Include="Util\PaginatedPrintData.cs" />
+    <Compile Include="Printing\PCLXLPrintJob.cs" />
     <Compile Include="Util\PJLHelper.cs" />
     <Compile Include="Util\PostscriptHelper.cs" />
     <Compile Include="Util\ProcessHelper.cs" />

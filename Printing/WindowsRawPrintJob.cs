@@ -14,30 +14,10 @@ using System.Printing;
 namespace TSVCEO.CloudPrint.Printing
 {
     [Serializable]
-    public class WindowsRawPrinterException : Exception
+    public class WindowsRawPrintJob : PrintJob
     {
-        public WindowsRawPrinterException(Exception inner)
-            : base(inner.Message, inner)
-        {
-        }
-    }
-
-    [Serializable]
-    public class WindowsRawPrintJobInfo
-    {
-        public string PrinterName { get; set; }
-        public string JobName { get; set; }
-        public string UserName { get; set; }
-        public byte[] RawPrintData { get; set; }
-        public PaginatedPrintJob PagedData { get; set; }
-        public byte[] PrintTicketXML { get; set; }
-        public bool RunAsUser { get; set; }
-
-        public PrintTicket PrintTicket { get { return new PrintTicket(new MemoryStream(PrintTicketXML)); } set { PrintTicketXML = value.GetXmlStream().ToArray(); } }
-    }
-
-    public class WindowsRawPrinter
-    {
+        public override byte[] PrintData { get { return PagedData == null ? null : PagedData.GetData(); } set { PagedData = new PaginatedPrintData { Prologue = value, PageData = null, Epilogue = null }; } }
+        public PaginatedPrintData PagedData { get; set; }
 
         public enum PRINTER_ACCESS_MASK
         {
@@ -224,18 +204,6 @@ namespace TSVCEO.CloudPrint.Printing
         [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool EndDocPrinter(IntPtr hPrinter);
 
-        private static void Serialize(Stream stream, object graph)
-        {
-            BinaryFormatter formatter = new BinaryFormatter(null, new StreamingContext(StreamingContextStates.CrossProcess));
-            formatter.Serialize(stream, graph);
-        }
-
-        private static object Deserialize(Stream stream)
-        {
-            BinaryFormatter formatter = new BinaryFormatter(null, new StreamingContext(StreamingContextStates.CrossProcess));
-            return formatter.Deserialize(stream);
-        }
-
         private static void WritePrinter(IntPtr hPrinter, byte[] data)
         {
             int i = 0;
@@ -254,39 +222,10 @@ namespace TSVCEO.CloudPrint.Printing
                 i += (int)len;
             }
         }
-        
-        public static void PrintRaw(WindowsRawPrintJobInfo jobinfo)
+
+        protected override void Run()
         {
-            if (jobinfo.RunAsUser)
-            {
-                jobinfo.RunAsUser = false;
-                MemoryStream stdin = new MemoryStream();
-                MemoryStream stdout = new MemoryStream();
-                MemoryStream stderr = new MemoryStream();
-
-                try
-                {
-                    Serialize(stdin, jobinfo);
-                    stdin.Flush();
-                    stdin.Position = 0;
-
-                    int retcode = WindowsIdentityStore.RunProcessAsUser(jobinfo.UserName, stdin, stdout, stderr, Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Assembly.GetExecutingAssembly().Location, new string[] { "-print" });
-
-                    if (retcode != 0)
-                    {
-                        stderr.Position = 0;
-                        Logger.Log(LogLevel.Info, "Error printing file:\n{0}", System.Text.Encoding.ASCII.GetString(stderr.ToArray()));
-                        throw new WindowsRawPrinterException((Exception)Deserialize(stderr));
-                    }
-                }
-                finally
-                {
-                    stdin.Dispose();
-                    stdout.Dispose();
-                    stderr.Dispose();
-                }
-            }
-            else
+            if (PagedData != null)
             {
                 IntPtr hPrinter;
                 PRINTER_DEFAULTS defaults = new PRINTER_DEFAULTS
@@ -295,9 +234,9 @@ namespace TSVCEO.CloudPrint.Printing
                     pDatatype = "RAW"
                 };
 
-                if (OpenPrinter(jobinfo.PrinterName, out hPrinter, ref defaults))
+                if (OpenPrinter(PrinterName, out hPrinter, ref defaults))
                 {
-                    DOC_INFO_1 docInfo = new DOC_INFO_1 { Datatype = "RAW", DocName = jobinfo.JobName, OutputFile = null };
+                    DOC_INFO_1 docInfo = new DOC_INFO_1 { Datatype = "RAW", DocName = JobName, OutputFile = null };
                     uint jobid = StartDocPrinter(hPrinter, 1, ref docInfo);
 
                     if (jobid < 0)
@@ -305,33 +244,24 @@ namespace TSVCEO.CloudPrint.Printing
                         Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
                     }
 
-
-                    if (jobinfo.RawPrintData != null)
+                    if (PagedData.Prologue != null)
                     {
-                        WritePrinter(hPrinter, jobinfo.RawPrintData);
+                        WritePrinter(hPrinter, PagedData.Prologue);
                     }
 
-                    if (jobinfo.PagedData != null)
+                    if (PagedData.PageData != null)
                     {
-                        if (jobinfo.PagedData.Prologue != null)
+                        foreach (byte[] pagedata in PagedData.PageData)
                         {
-                            WritePrinter(hPrinter, jobinfo.PagedData.Prologue);
+                            StartPagePrinter(hPrinter);
+                            WritePrinter(hPrinter, pagedata);
+                            EndPagePrinter(hPrinter);
                         }
+                    }
 
-                        if (jobinfo.PagedData.PageData != null)
-                        {
-                            foreach (byte[] pagedata in jobinfo.PagedData.PageData)
-                            {
-                                StartPagePrinter(hPrinter);
-                                WritePrinter(hPrinter, pagedata);
-                                EndPagePrinter(hPrinter);
-                            }
-                        }
-
-                        if (jobinfo.PagedData.Epilogue != null)
-                        {
-                            WritePrinter(hPrinter, jobinfo.PagedData.Epilogue);
-                        }
+                    if (PagedData.Epilogue != null)
+                    {
+                        WritePrinter(hPrinter, PagedData.Epilogue);
                     }
 
                     if (!EndDocPrinter(hPrinter))
@@ -339,53 +269,8 @@ namespace TSVCEO.CloudPrint.Printing
                         Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
                     }
 
-                    /*
-                    IntPtr addjobinfobuf = Marshal.AllocHGlobal(32768);
-                    uint cbneeded;
-
-                    if (AddJob(hPrinter, 1, addjobinfobuf, 32768, out cbneeded))
-                    {
-                        ADDJOB_INFO_1 addjobinfo = (ADDJOB_INFO_1)Marshal.PtrToStructure(addjobinfobuf, typeof(ADDJOB_INFO_1));
-
-                        IntPtr spooljobinfobuf = Marshal.AllocHGlobal(1048576);
-                        GetJob(hPrinter, addjobinfo.JobId, 2, spooljobinfobuf, 1048576, out cbneeded);
-                        JOB_INFO_2 oldspooljobinfo = (JOB_INFO_2)Marshal.PtrToStructure(spooljobinfobuf, typeof(JOB_INFO_2));
-                    
-                        JOB_INFO_2 spooljobinfo = new JOB_INFO_2
-                        {
-                            Datatype = "RAW",
-                            Document = jobinfo.JobName,
-                            JobId = addjobinfo.JobId,
-                            UserName = jobinfo.UserName
-                        };
-
-                        Marshal.StructureToPtr(spooljobinfo, spooljobinfobuf, false);
-                        SetJob(hPrinter, addjobinfo.JobId, 2, spooljobinfobuf, 0);
-                        Marshal.DestroyStructure(spooljobinfobuf, typeof(JOB_INFO_2));
-                        Marshal.FreeHGlobal(spooljobinfobuf);
-
-                        File.WriteAllBytes(addjobinfo.Path, jobinfo.RawPrintData);
-
-                        ScheduleJob(hPrinter, addjobinfo.JobId);
-                    }
-                     */
-
                     ClosePrinter(hPrinter);
                 }
-            }
-        }
-
-        public static int PrintRaw_Child(Stream stdin, Stream stdout, Stream stderr)
-        {
-            try
-            {
-                PrintRaw((WindowsRawPrintJobInfo)Deserialize(stdin));
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                Serialize(stderr, ex);
-                return 1;
             }
         }
     }

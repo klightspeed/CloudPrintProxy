@@ -5,6 +5,7 @@ using System.Text;
 using System.Printing;
 using System.IO;
 using System.Reflection;
+using TSVCEO.CloudPrint.Util.Poppler;
 
 namespace TSVCEO.CloudPrint.Util
 {
@@ -33,7 +34,7 @@ namespace TSVCEO.CloudPrint.Util
             return stdout.ToArray();
         }
 
-        public static PaginatedPrintJob FromPDF(byte[] PDFData, PrintTicket ticket)
+        public static PaginatedPrintData FromPDF(byte[] PDFData, PrintTicket ticket)
         {
             List<byte> pagesetup = PostscriptHelper.SetPageDeviceCommand(ticket).SelectMany(w =>
             {
@@ -98,7 +99,7 @@ namespace TSVCEO.CloudPrint.Util
                 }
             }
 
-            return new PaginatedPrintJob
+            return new PaginatedPrintData
             {
                 Prologue = prologue.ToArray(),
                 PageData = pages.ToArray(),

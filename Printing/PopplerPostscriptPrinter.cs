@@ -16,14 +16,14 @@ namespace TSVCEO.CloudPrint.Printing
         protected void Print(CloudPrintJob job, bool runAsUser, bool usePJL, Dictionary<string, string> pjljobattribs, Dictionary<string, string> pjlsettings)
         {
             PrintTicket ticket = job.GetPrintTicket();
-            PaginatedPrintJob pagedjob = PostscriptHelper.FromPDF(job.GetPrintData(), ticket);
+            PaginatedPrintData pagedjob = PostscriptHelper.FromPDF(job.GetPrintData(), ticket);
 
             if (usePJL)
             {
                 pagedjob.Prologue = PJLHelper.GetPJL(pjljobattribs, pjlsettings, "POSTSCRIPT").Concat(pagedjob.Prologue).ToArray();
             }
 
-            WindowsRawPrinter.PrintRaw(new WindowsRawPrintJobInfo
+            WindowsRawPrintJob pj = new WindowsRawPrintJob
             {
                 PagedData = pagedjob,
                 JobName = job.JobTitle,
@@ -31,7 +31,9 @@ namespace TSVCEO.CloudPrint.Printing
                 UserName = job.Username,
                 PrintTicket = ticket,
                 RunAsUser = runAsUser
-            });
+            };
+
+            pj.Print();
         }
 
         #endregion

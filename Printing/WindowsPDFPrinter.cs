@@ -40,16 +40,16 @@ namespace TSVCEO.CloudPrint.Printing
 
                 byte[] printdata = gs.ProcessData(printTicket, printData, "pdfwrite", args.ToArray(), null);
 
-                WindowsRawPrintJobInfo ji = new WindowsRawPrintJobInfo
+                WindowsRawPrintJob pj = new WindowsRawPrintJob
                 {
                     JobName = job.JobTitle,
                     UserName = job.Username,
                     PrinterName = job.Printer.Name,
-                    RawPrintData = printdata,
+                    PrintData = printdata,
                     RunAsUser = true
                 };
 
-                WindowsRawPrinter.PrintRaw(ji);
+                pj.Print();
             }
         }
     }

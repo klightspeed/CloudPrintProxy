@@ -3,16 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace TSVCEO.CloudPrint.Util
+namespace TSVCEO.CloudPrint.Printing
 {
-    public enum PCLBindingFormat
-    {
-        ASCII = 0x27,
-        BigEndianBinary = 0x28,
-        LittleEndianBinary = 0x29
-    }
-
-    class PCLPrintJob
+    class PCLXLPrintJob
     {
         public string[] PrePJL;
         public string[] PostPJL;
@@ -21,6 +14,13 @@ namespace TSVCEO.CloudPrint.Util
         public List<byte[]> PageData = new List<byte[]>();
         public PCLBindingFormat BindingFormat;
         public bool ForeignEndian { get { return BitConverter.IsLittleEndian ^ (BindingFormat == PCLBindingFormat.LittleEndianBinary); } }
+
+        public enum PCLBindingFormat
+        {
+            ASCII = 0x27,
+            BigEndianBinary = 0x28,
+            LittleEndianBinary = 0x29
+        }
 
         protected ushort ToUInt16(byte[] rawdata, int start)
         {
@@ -283,7 +283,7 @@ namespace TSVCEO.CloudPrint.Util
             end = start + length;
         }
 
-        public PCLPrintJob(byte[] rawdata)
+        public PCLXLPrintJob(byte[] rawdata)
         {
             int pos = 0;
             this.PrePJL = ParsePJL(rawdata, pos, out pos);
