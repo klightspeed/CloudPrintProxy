@@ -5,6 +5,7 @@ using System.Text;
 
 namespace TSVCEO.CloudPrint.Util
 {
+    [Serializable]
     public class PaginatedPrintJob
     {
         public byte[] Prologue { get; set; }
