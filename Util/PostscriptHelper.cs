@@ -13,25 +13,12 @@ namespace TSVCEO.CloudPrint.Util
     {
         public static byte[] FromPDF(byte[] PDFData)
         {
-            MemoryStream stdin = new MemoryStream(PDFData);
-            MemoryStream stdout = new MemoryStream();
-            MemoryStream stderr = new MemoryStream();
-
-            int retval = Util.ProcessHelper.RunProcess(
-                stdin,
-                stdout,
-                stderr,
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\\poppler",
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\\poppler\\pdftops.exe",
-                new string[] { "-", "-" }
-            );
-
-            if (retval != 0)
+            MemoryStream output = new MemoryStream();
+            using (PopplerDocument doc = new PopplerDocument(PDFData, null))
             {
-                throw new InvalidOperationException(String.Format("pstopdf returned status code {0}\n\n{1}", retval, Encoding.UTF8.GetString(stderr.ToArray())));
+                doc.WritePostscript(output);
             }
-
-            return stdout.ToArray();
+            return output.ToArray();
         }
 
         public static PaginatedPrintData FromPDF(byte[] PDFData, PrintTicket ticket)

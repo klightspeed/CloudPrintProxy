@@ -109,6 +109,7 @@
     <Compile Include="Printing\GhostscriptPCLXLPrinter.cs" />
     <Compile Include="Printing\GhostscriptPrinter.cs" />
     <Compile Include="Printing\JobPrinter.cs" />
+    <Compile Include="Printing\PopplerGDIPrinter.cs" />
     <Compile Include="Printing\PopplerPostscriptPrinter.cs" />
     <Compile Include="Printing\PrintJob.cs" />
     <Compile Include="Printing\WindowsPrintJobProcessor.cs" />
@@ -139,6 +140,7 @@
     <Compile Include="Util\PaginatedPrintData.cs" />
     <Compile Include="Printing\PCLXLPrintJob.cs" />
     <Compile Include="Util\PJLHelper.cs" />
+    <Compile Include="Util\Poppler.cs" />
     <Compile Include="Util\PostscriptHelper.cs" />
     <Compile Include="Util\ProcessHelper.cs" />
     <Compile Include="Proxy\XMPP.cs" />
@@ -167,45 +169,28 @@
     <Content Include="Lib\System.Web.Http.WebHost.dll" />
     <Content Include="Lib\System.Web.Http.WebHost.xml" />
     <Content Include="Lib\System.Web.Http.xml" />
-    <Content Include="poppler\libfreetype-6.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libgcc_s_sjlj-1.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libjpeg-8.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\liblcms2-2.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\liblzma-5.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libopenjpeg-1.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libpng15-15.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libpoppler-28.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libpoppler-cpp-0.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libstdc++-6.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\libtiff-5.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\pdftops.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="poppler\zlib1.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Content Include="poppler\libcairo-2.dll" />
+    <Content Include="poppler\libffi-6.dll" />
+    <Content Include="poppler\libfontconfig-1.dll" />
+    <Content Include="poppler\libfreetype-6.dll" />
+    <Content Include="poppler\libgcc_s_sjlj-1.dll" />
+    <Content Include="poppler\libgio-2.0-0.dll" />
+    <Content Include="poppler\libglib-2.0-0.dll" />
+    <Content Include="poppler\libgmodule-2.0-0.dll" />
+    <Content Include="poppler\libgobject-2.0-0.dll" />
+    <Content Include="poppler\libintl-8.dll" />
+    <Content Include="poppler\libjpeg-8.dll" />
+    <Content Include="poppler\liblcms2-2.dll" />
+    <Content Include="poppler\liblzma-5.dll" />
+    <Content Include="poppler\libopenjpeg-1.dll" />
+    <Content Include="poppler\libpixman-1-0.dll" />
+    <Content Include="poppler\libpng15-15.dll" />
+    <Content Include="poppler\libpoppler-37.dll" />
+    <Content Include="poppler\libpoppler-glib-8.dll" />
+    <Content Include="poppler\libstdc++-6.dll" />
+    <Content Include="poppler\libtiff-5.dll" />
+    <Content Include="poppler\libxml2-2.dll" />
+    <Content Include="poppler\zlib1.dll" />
   </ItemGroup>
   <ItemGroup Condition="'$(Platform)' == 'x86'">
     <Content Include="x86\SQLite.Interop.dll">
