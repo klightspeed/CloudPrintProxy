@@ -18,8 +18,11 @@ namespace TSVCEO.CloudPrint.InfoServer.Filters
     {
         public override void OnException(HttpActionExecutedContext actionExecutedContext)
         {
-            actionExecutedContext.Response.Content = new StringContent("Error: " + actionExecutedContext.Exception.ToString());
-            actionExecutedContext.Response.StatusCode = HttpStatusCode.InternalServerError;
+            actionExecutedContext.Response = new HttpResponseMessage
+            {
+                Content = new StringContent("Error: " + actionExecutedContext.Exception.ToString()),
+                StatusCode = HttpStatusCode.InternalServerError
+            };
         }
     }
 }

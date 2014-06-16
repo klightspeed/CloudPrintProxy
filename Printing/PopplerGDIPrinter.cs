@@ -6,6 +6,7 @@ using System.Printing;
 using System.Printing.Interop;
 using System.Runtime.InteropServices;
 using System.IO;
+using TSVCEO.CloudPrint.Util;
 using TSVCEO.CloudPrint.Util.Poppler;
 
 namespace TSVCEO.CloudPrint.Printing
@@ -61,11 +62,11 @@ namespace TSVCEO.CloudPrint.Printing
 
         #region public methods
 
-        public override bool NeedUserAuth { get { return false; } }
+        public override bool NeedUserAuth { get { return true; } }
 
         public override bool UserCanPrint(string username)
         {
-            return true;
+            return WindowsIdentityStore.HasWindowsIdentity(username);
         }
 
         public override void Print(CloudPrintJob job)
