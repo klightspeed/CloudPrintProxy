@@ -488,7 +488,7 @@ namespace TSVCEO.CloudPrint.Util.Poppler
         {
             OutputStream = output;
             CloseStream = closestream;
-            NativeMethods.cairo_ps_surface_create_for_stream(CairoPostscriptSurface.Write, this, width_in_points, height_in_points);
+            CairoSurfacePtr = NativeMethods.cairo_ps_surface_create_for_stream(CairoPostscriptSurface.Write, this, width_in_points, height_in_points);
         }
 
         protected static CairoStatus Write(object userdata, IntPtr data, int length)
