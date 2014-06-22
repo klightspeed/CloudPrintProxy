@@ -358,8 +358,6 @@ namespace TSVCEO.CloudPrint.Proxy
                 }
             }
 
-            PrintJobsLastUpdated = DateTime.Now;
-
             return jobs;
         }
 
