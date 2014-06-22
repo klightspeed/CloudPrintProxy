@@ -11,11 +11,11 @@ namespace TSVCEO.CloudPrint.Util
         {
             if (level >= LogLevel.Warning)
             {
-                Console.Error.WriteLine(message);
+                Console.Error.WriteLine("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss"), message);
             }
             else
             {
-                Console.Out.WriteLine(message);
+                Console.Out.WriteLine("[{0}] {1}", DateTime.Now.ToString("HH:mm:ss"), message);
             }
         }
     }
