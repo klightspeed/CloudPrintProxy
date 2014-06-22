@@ -50,6 +50,10 @@ namespace TSVCEO.CloudPrint
         public static string SessionDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["SessionDatabaseFilename"]); } }
         public static string AuditronDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["AuditronDatabaseFilename"]); } }
 
+        public static int PrintJobPollingInterval { get { return Int32.Parse(ConfigurationManager.AppSettings["PrintJobPollingInterval"] ?? "60"); } }
+        public static int PrintQueuePollingInterval { get { return Int32.Parse(ConfigurationManager.AppSettings["PrintQueuePollingInterval"] ?? "1800"); } }
+        public static int XMPPReconnectInterval { get { return Int32.Parse(ConfigurationManager.AppSettings["XMPPReconnectInterval"] ?? "300"); } }
+
         public static NameValueCollection GhostscriptPrinterDrivers { get { return ConfigurationManager.GetSection("ghostscriptPrinterDrivers") as NameValueCollection ?? new NameValueCollection(); } }
 
         public static PrinterConfigurationSection PrinterConfigurationSection { get { return ConfigurationManager.GetSection("printerConfiguration") as PrinterConfigurationSection; } }

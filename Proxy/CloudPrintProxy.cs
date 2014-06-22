@@ -25,11 +25,9 @@ namespace TSVCEO.CloudPrint.Proxy
     {
         #region constants
 
-        private static readonly TimeSpan MinPrintQueueUpdateInterval = new TimeSpan(300 * TimeSpan.TicksPerSecond);
-        private static readonly TimeSpan PrintQueueUpdateInterval = new TimeSpan(1800 * TimeSpan.TicksPerSecond);
-        private static readonly TimeSpan MinPrintJobUpdateInterval = new TimeSpan(30 * TimeSpan.TicksPerSecond);
-        private static readonly TimeSpan PrintJobUpdateInterval = new TimeSpan(60 * TimeSpan.TicksPerSecond);
-        private static readonly TimeSpan XMPPReconnectInterval = new TimeSpan(300 * TimeSpan.TicksPerSecond);
+        private static TimeSpan PrintQueueUpdateInterval = TimeSpan.FromSeconds(Config.PrintQueuePollingInterval);
+        private static TimeSpan PrintJobUpdateInterval = TimeSpan.FromSeconds(Config.PrintJobPollingInterval);
+        private static TimeSpan XMPPReconnectInterval = TimeSpan.FromSeconds(Config.XMPPReconnectInterval);
 
         #endregion
 
@@ -48,13 +46,14 @@ namespace TSVCEO.CloudPrint.Proxy
         private object UpdateLock { get; set; }
         private IPrintJobProcessor PrintJobProcessor { get; set; }
         private Action<CloudPrintProxy> OperationCancelled { get; set; }
+        private bool PrintQueuesNeedUpdating { get; set; }
         private bool Disposed { get; set; }
         #endregion
 
         #region public properties
         public bool IsRegistered { get { return Config.OAuthRefreshToken != null; } }
-        public IEnumerable<CloudPrinter> Queues { get { return UpdatePrintQueues(); } }
-        public IEnumerable<CloudPrintJob> PrintJobs { get { return UpdateCloudPrintJobs(); } }
+        public IEnumerable<CloudPrinter> Queues { get { return GetPrintQueues(); } }
+        public IEnumerable<CloudPrintJob> PrintJobs { get { return GetCloudPrintJobs(); } }
         #endregion
 
         #region constructors / destructors
@@ -207,9 +206,25 @@ namespace TSVCEO.CloudPrint.Proxy
             HTTPHelper.PostCloudPrintUrlEncodedRequest(OAuthTicket, "delete", new { printerid = printerid });
         }
 
+        private void PollUpdatePrintQueues()
+        {
+            if (PrintQueuesNeedUpdating)
+            {
+                UpdatePrintQueues();
+            }
+
+            PrintQueuesNeedUpdating = true;
+        }
+
+        private IEnumerable<CloudPrinter> GetPrintQueues()
+        {
+            PrintQueuesNeedUpdating = false;
+            return UpdatePrintQueues();
+        }
+        
         private IEnumerable<CloudPrinter> UpdatePrintQueues()
         {
-            if (PrintQueuesLastUpdated + MinPrintQueueUpdateInterval < DateTime.Now)
+            if (PrintQueuesLastUpdated + PrintQueueUpdateInterval - TimeSpan.FromSeconds(5) < DateTime.Now)
             {
                 PrintQueuesLastUpdated = DateTime.Now;
 
@@ -271,37 +286,50 @@ namespace TSVCEO.CloudPrint.Proxy
             }
         }
 
-        private IEnumerable<CloudPrintJob> UpdateCloudPrintJobs()
+        private void PollUpdateCloudPrintJobs()
         {
-            if (PrintJobsLastUpdated + MinPrintJobUpdateInterval < DateTime.Now)
+            if (PrintJobsLastUpdated + PrintJobUpdateInterval - TimeSpan.FromSeconds(5) < DateTime.Now)
             {
-                PrintJobsLastUpdated = DateTime.Now;
-                Logger.Log(LogLevel.Debug, "Updating print jobs for all printers");
+                UpdateCloudPrintJobs();
+            }
+        }
 
-                try
-                {
-                    Dictionary<string, CloudPrintJob> jobs = CloudPrintJobImpl.GetIncompletePrintJobs(this).ToDictionary(j => j.JobID, j => j);
-
-                    IEnumerable<CloudPrinter> printers = Queues;
-
-                    foreach (CloudPrinter printer in printers)
-                    {
-                        foreach (CloudPrintJob job in UpdateCloudPrintJobs(printer))
-                        {
-                            jobs[job.JobID] = job;
-                        }
-                    }
-
-                    return jobs.Values.ToList();
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log(LogLevel.Warning, "Caught exception while updating print jobs:\n{0}", ex.ToString());
-                    return _PrintJobs.Values;
-                }
+        private IEnumerable<CloudPrintJob> GetCloudPrintJobs()
+        {
+            if (PrintJobsLastUpdated + PrintJobUpdateInterval - TimeSpan.FromSeconds(5) < DateTime.Now)
+            {
+                return UpdateCloudPrintJobs();
             }
             else
             {
+                return _PrintJobs.Values;
+            }
+        }
+
+        private IEnumerable<CloudPrintJob> UpdateCloudPrintJobs()
+        {
+            PrintJobsLastUpdated = DateTime.Now;
+            Logger.Log(LogLevel.Debug, "Updating print jobs for all printers");
+
+            try
+            {
+                Dictionary<string, CloudPrintJob> jobs = CloudPrintJobImpl.GetIncompletePrintJobs(this).ToDictionary(j => j.JobID, j => j);
+
+                IEnumerable<CloudPrinter> printers = Queues;
+
+                foreach (CloudPrinter printer in printers)
+                {
+                    foreach (CloudPrintJob job in UpdateCloudPrintJobs(printer))
+                    {
+                        jobs[job.JobID] = job;
+                    }
+                }
+
+                return jobs.Values.ToList();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LogLevel.Warning, "Caught exception while updating print jobs:\n{0}", ex.ToString());
                 return _PrintJobs.Values;
             }
         }
@@ -406,7 +434,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
                     if (XMPP == null && PrintJobUpdateTimer == null)
                     {
-                        PrintJobUpdateTimer = new Timer((obj) => UpdateCloudPrintJobs(), null, PrintJobUpdateInterval, PrintJobUpdateInterval);
+                        PrintJobUpdateTimer = new Timer((obj) => PollUpdateCloudPrintJobs(), null, PrintJobUpdateInterval, PrintJobUpdateInterval);
 
                         if (useXMPP)
                         {
@@ -517,14 +545,9 @@ namespace TSVCEO.CloudPrint.Proxy
             }
         }
 
-        public IEnumerable<CloudPrintJob> GetCloudPrintJobs()
-        {
-            return UpdateCloudPrintJobs();
-        }
-
         public IEnumerable<CloudPrintJob> GetCloudPrintJobsForUser(string username)
         {
-            return GetCloudPrintJobs().Where(j => WindowsIdentityStore.IsAcceptedDomain(j.Domain) && j.Username == username);
+            return PrintJobs.Where(j => WindowsIdentityStore.IsAcceptedDomain(j.Domain) && j.Username == username);
         }
 
         public CloudPrintJob GetCloudPrintJobById(string id)
