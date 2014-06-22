@@ -427,12 +427,12 @@ namespace TSVCEO.CloudPrint.Proxy
 
                     if (PrintQueueUpdateTimer == null)
                     {
-                        PrintQueueUpdateTimer = new Timer((obj) => { lock (UpdateLock) { UpdatePrintQueues(); } }, null, TimeSpan.Zero, PrintQueueUpdateInterval);
+                        PrintQueueUpdateTimer = new Timer((obj) => { lock (UpdateLock) { PollUpdatePrintQueues(); } }, null, TimeSpan.Zero, PrintQueueUpdateInterval);
                     }
 
                     if (XMPP == null && PrintJobUpdateTimer == null)
                     {
-                        PrintJobUpdateTimer = new Timer((obj) => PollUpdateCloudPrintJobs(), null, PrintJobUpdateInterval, PrintJobUpdateInterval);
+                        PrintJobUpdateTimer = new Timer((obj) => PollUpdateCloudPrintJobs(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
 
                         if (useXMPP)
                         {
