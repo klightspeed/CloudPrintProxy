@@ -58,9 +58,6 @@ namespace TSVCEO.CloudPrint.Printing
         private ConcurrentDictionary<string, ConcurrentQueue<CloudPrintJob>> UserDeferredJobs { get; set; }
         private Thread PrintQueueProcessorThread { get; set; }
         private CancellationTokenSource CancelTokenSource { get; set; }
-        private PrintServer PrintServer { get; set; }
-        private Thread PrintServerQuerierThread { get; set; }
-        private Dispatcher PrintServerQuerierDispatcher { get; set; }
         private Dictionary<string, PrintQueue> PrintQueues { get; set; }
 
         #endregion
@@ -73,8 +70,6 @@ namespace TSVCEO.CloudPrint.Printing
             UserDeferredJobs = new ConcurrentDictionary<string, ConcurrentQueue<CloudPrintJob>>();
             CancelTokenSource = new CancellationTokenSource();
             PrintQueues = new Dictionary<string, PrintQueue>();
-            PrintServerQuerierThread = new Thread(PrintServerQuerierThreadProc);
-            PrintServerQuerierThread.Start();
         }
 
         ~WindowsPrintJobProcessor()
@@ -103,37 +98,11 @@ namespace TSVCEO.CloudPrint.Printing
             PrintQueueProcessorThread = null;
             CancelTokenSource = null;
 
-            if (PrintServerQuerierThread != null)
-            {
-                if (PrintServerQuerierDispatcher != null)
-                {
-                    if (PrintServer != null)
-                    {
-                        PrintServerQuerierDispatcher.Invoke(new Action(PrintServer.Dispose));
-                        PrintServer = null;
-                    }
-
-                    PrintServerQuerierDispatcher.InvokeShutdown();
-                    PrintServerQuerierDispatcher = null;
-                }
-
-                PrintServerQuerierThread.Join();
-                PrintServerQuerierThread = null;
-            }
-
             if (disposing)
             {
                 Disposed = true;
                 GC.SuppressFinalize(this);
             }
-        }
-
-        [STAThread]
-        private void PrintServerQuerierThreadProc()
-        {
-            PrintServer = new LocalPrintServer();
-            PrintServerQuerierDispatcher = Dispatcher.CurrentDispatcher;
-            Dispatcher.Run();
         }
 
         private IEnumerable<CloudPrintJob> DequeueDeferredPrintQueueJobs(string username)
@@ -287,32 +256,6 @@ namespace TSVCEO.CloudPrint.Printing
             }
         }
 
-        private IEnumerable<CloudPrinter> DoGetPrintQueues()
-        {
-            PrintServer.Refresh();
-            Dictionary<string, PrintQueue> queuesToDispose = new Dictionary<string, PrintQueue>(PrintQueues);
-            
-            foreach (string printername in EnumerateLocalPrinterNames())
-            {
-                if (PrintQueues.ContainsKey(printername))
-                {
-                    queuesToDispose.Remove(printername);
-                }
-                else
-                {
-                    PrintQueues.Add(printername, PrintServer.GetPrintQueue(printername));
-                }
-            }
-
-            foreach (KeyValuePair<string, PrintQueue> pq_kvp in queuesToDispose)
-            {
-                PrintQueues.Remove(pq_kvp.Key);
-                pq_kvp.Value.Dispose();
-            }
-
-            return PrintQueues.Values.Where(q => q.IsShared).Select(q => new CloudPrinterImpl(q)).ToArray();
-        }
-
         private IEnumerable<string> EnumerateLocalPrinterNames()
         {
             int cbneeded = 0;
@@ -395,7 +338,28 @@ namespace TSVCEO.CloudPrint.Printing
 
         public IEnumerable<CloudPrinter> GetPrintQueues()
         {
-            return PrintServerQuerierDispatcher.Invoke(new Func<IEnumerable<CloudPrinter>>(DoGetPrintQueues)) as IEnumerable<CloudPrinter>;
+            LocalPrintServer PrintServer = new LocalPrintServer();
+            Dictionary<string, PrintQueue> queuesToDispose = new Dictionary<string, PrintQueue>(PrintQueues);
+
+            foreach (string printername in EnumerateLocalPrinterNames())
+            {
+                if (PrintQueues.ContainsKey(printername))
+                {
+                    queuesToDispose.Remove(printername);
+                }
+                else
+                {
+                    PrintQueues.Add(printername, PrintServer.GetPrintQueue(printername));
+                }
+            }
+
+            foreach (KeyValuePair<string, PrintQueue> pq_kvp in queuesToDispose)
+            {
+                PrintQueues.Remove(pq_kvp.Key);
+                pq_kvp.Value.Dispose();
+            }
+
+            return PrintQueues.Values.Where(q => q.IsShared).Select(q => new CloudPrinterImpl(q)).ToArray();
         }
 
         public IEnumerable<CloudPrintJob> GetQueuedJobs(string username)
