@@ -48,7 +48,7 @@ namespace TSVCEO.CloudPrint
 
         public static string CredentialDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["CredentialDatabaseFilename"]); } }
         public static string SessionDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["SessionDatabaseFilename"]); } }
-        public static string AuditronDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["AuditronDatabaseFilename"]); } }
+        public static string UserIDMappingDatabaseFilename { get { return GetAppDataDirFilename(ConfigurationManager.AppSettings["AuditronDatabaseFilename"]); } }
 
         public static int PrintJobPollingInterval { get { return Int32.Parse(ConfigurationManager.AppSettings["PrintJobPollingInterval"] ?? "60"); } }
         public static int PrintQueuePollingInterval { get { return Int32.Parse(ConfigurationManager.AppSettings["PrintQueuePollingInterval"] ?? "1800"); } }

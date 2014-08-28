@@ -150,6 +150,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="InfoServer\Session.cs" />
     <Compile Include="Util\TaskHelpers.cs" />
+    <Compile Include="Util\UserIDMapper.cs" />
     <Compile Include="Util\WindowsIdentityStore.cs" />
   </ItemGroup>
   <ItemGroup>

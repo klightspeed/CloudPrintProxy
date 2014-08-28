@@ -16,7 +16,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
     {
         protected HttpResponseMessage GetUserId(string userid, params object[] errors)
         {
-            string[] usernames = AuditronPostscriptPrinter.GetAllUserIds().Where(kvp => kvp.Value == userid).Select(kvp => kvp.Key).ToArray();
+            string[] usernames = UserIDMapper.GetAllUserIds().Where(kvp => kvp.Value == userid).Select(kvp => kvp.Key).ToArray();
 
             return Html(
                 Head("Xerox Usernames mapped to Printer Code " + userid),
@@ -55,7 +55,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
 
         protected HttpResponseMessage GetUserIds(params object[] errors)
         {
-            Dictionary<string, string[]> userids = AuditronPostscriptPrinter.GetAllUserIds().GroupBy(kvp => kvp.Value).ToDictionary(g => g.Key, g => g.Select(kvp => kvp.Key).ToArray());
+            Dictionary<string, string[]> userids = UserIDMapper.GetAllUserIds().GroupBy(kvp => kvp.Value).ToDictionary(g => g.Key, g => g.Select(kvp => kvp.Key).ToArray());
 
             return Html(
                 Head("Xerox Username to Printer Code mapping"),
@@ -93,7 +93,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
         {
             foreach (string username in form.Where(kvp => kvp.Key.StartsWith("user_")).Select(kvp => kvp.Key.Substring(5)))
             {
-                AuditronPostscriptPrinter.DeleteUser(username);
+                UserIDMapper.DeleteUser(username);
             }
 
             return GetUserId(form.Get("UserId"));
@@ -108,7 +108,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
         {
             foreach (string username in usernames)
             {
-                AuditronPostscriptPrinter.CreateUser(username, userid);
+                UserIDMapper.CreateUser(username, userid);
             }
 
             return GetUserId(userid);
@@ -120,7 +120,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
             {
                 foreach (string username in usernames)
                 {
-                    AuditronPostscriptPrinter.CreateUser(username, userid);
+                    UserIDMapper.CreateUser(username, userid);
                 }
 
                 return GetUserIds();
