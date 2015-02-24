@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Web.Http;
 using System.Web.Http.Filters;
 using System.Web.Http.Controllers;
 using System.Web.Http.Dispatcher;
@@ -28,7 +29,7 @@ namespace TSVCEO.CloudPrint.InfoServer.Filters
 
             try
             {
-                if (IsAuthorized(actionContext))
+                if (IsAuthorized(actionContext) || IsAnonymousAllowed(actionContext))
                 {
                     base.OnActionExecuting(actionContext);
                 }
@@ -65,22 +66,42 @@ namespace TSVCEO.CloudPrint.InfoServer.Filters
             {
                 byte[] authdata = Convert.FromBase64String(auth.Parameter);
                 username = Encoding.UTF8.GetString(authdata.TakeWhile(c => c != (byte)':').ToArray());
-                SecureString password = new SecureString();
-                foreach (byte c in authdata.SkipWhile(c => c != (byte)':').Skip(1))
-                {
-                    password.AppendChar((char)c);
-                }
-                password.MakeReadOnly();
-                var identity = WindowsIdentityStore.Login(username, password);
-
-                if (identity != null && identity.IsAuthenticated)
-                {
-                    session["username"] = username;
-                    return true;
-                }
+                return Authenticate(session, username, authdata.SkipWhile(c => c != (byte)':').Skip(1).ToArray());
             }
 
             return false;
+        }
+
+        public static bool Authenticate(Session session, string username, byte[] passbytes)
+        {
+            SecureString password = new SecureString();
+            
+            foreach (byte c in passbytes)
+            {
+                password.AppendChar((char)c);
+            }
+            
+            password.MakeReadOnly();
+            return Authenticate(session, username, password);
+        }
+
+        public static bool Authenticate(Session session, string username, SecureString password)
+        {
+            var identity = WindowsIdentityStore.Login(username, password);
+
+            if (identity != null && identity.IsAuthenticated)
+            {
+                session["username"] = username;
+                return true;
+            }
+
+            return false;
+        }
+
+        protected bool IsAnonymousAllowed(HttpActionContext actionContext)
+        {
+            IEnumerable<AllowAnonymousAttribute> allowanon = actionContext.ControllerContext.Controller.GetType().GetCustomAttributes(false).OfType<AllowAnonymousAttribute>();
+            return allowanon.Count() != 0;
         }
 
         protected void HandleUnauthorizedRequest(HttpActionContext actionContext)
