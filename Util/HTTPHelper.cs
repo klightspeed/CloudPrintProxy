@@ -152,10 +152,11 @@ namespace TSVCEO.CloudPrint.Util
 
         public static byte[] SendUrlEncodedPostData(HttpWebRequest request, dynamic postdata, out HttpWebResponse response)
         {
+            UTF8Encoding utf8 = new UTF8Encoding(false);
             request.Method = "POST";
             request.ContentType = "application/x-www-form-urlencoded";
             var stream = new MemoryStream();
-            WriteUrlEncodedPostData(new StreamWriter(stream, Encoding.UTF8), postdata);
+            WriteUrlEncodedPostData(new StreamWriter(stream, utf8), postdata);
             var streamdata = stream.ToArray();
             var streamtext = Encoding.UTF8.GetString(streamdata);
             request.GetRequestStream().Write(streamdata, 0, streamdata.Length);
