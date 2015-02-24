@@ -66,6 +66,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
             OAuthTicketLock = new object();
             _PrintJobs = new ConcurrentDictionary<string,CloudPrintJob>();
+            _Queues = new List<CloudPrinter>();
             OperationCancelled = operationCancelledCallback;
             PrintJobsLastUpdated = DateTime.MinValue;
             PrintJobProcessor = printjobprocessor;
@@ -226,14 +227,11 @@ namespace TSVCEO.CloudPrint.Proxy
         {
             if (PrintQueuesLastUpdated + PrintQueueUpdateInterval - TimeSpan.FromSeconds(5) < DateTime.Now)
             {
-                PrintQueuesLastUpdated = DateTime.Now;
-
                 try
                 {
-
                     Dictionary<string, string> printerIds;
 
-                    if (_Queues == null || _Queues.Count == 0)
+                    if (_Queues.Count == 0)
                     {
                         IEnumerable<dynamic> printers = HTTPHelper.PostCloudPrintUrlEncodedRequest(OAuthTicket, "list", new { proxy = Config.CloudPrintProxyID }).printers;
                         printerIds = printers.ToDictionary(p => (string)p.name, p => (string)p.id);
@@ -269,6 +267,8 @@ namespace TSVCEO.CloudPrint.Proxy
                     }
 
                     _Queues = queues;
+
+                    PrintQueuesLastUpdated = DateTime.Now;
 
                     UpdateCloudPrintJobs();
 
