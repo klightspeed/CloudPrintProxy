@@ -12,12 +12,14 @@ using System.Web.Http.SelfHost;
 using System.Threading;
 using System.Reflection;
 using TSVCEO.CloudPrint.Proxy;
+using TSVCEO.CloudPrint.Util;
 
 namespace TSVCEO.CloudPrint.InfoServer
 {
     public class CloudPrintInfoServer : IDisposable
     {
         protected HttpSelfHostServer Server;
+        protected AuthServiceRegistration AuthServiceRegistration;
 
         public CloudPrintInfoServer(string baseurl, CloudPrintProxy printproxy)
         {
@@ -32,6 +34,7 @@ namespace TSVCEO.CloudPrint.InfoServer
             cfg.Filters.Add(new Filters.WindowsAuthorizationFilter());
             cfg.Filters.Add(new Filters.CloudPrintProxyFilter { PrintProxy = printproxy });
             Server = new HttpSelfHostServer(cfg);
+            AuthServiceRegistration = new AuthServiceRegistration(printproxy);
         }
 
         public CloudPrintInfoServer(int port, CloudPrintProxy printproxy)
@@ -61,6 +64,7 @@ namespace TSVCEO.CloudPrint.InfoServer
 
         public void Start()
         {
+            AuthServiceRegistration.Start();
             Server.OpenAsync().Wait();
         }
     }

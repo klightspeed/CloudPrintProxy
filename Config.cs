@@ -54,6 +54,8 @@ namespace TSVCEO.CloudPrint
         public static int PrintQueuePollingInterval { get { return Int32.Parse(ConfigurationManager.AppSettings["PrintQueuePollingInterval"] ?? "1800"); } }
         public static int XMPPReconnectInterval { get { return Int32.Parse(ConfigurationManager.AppSettings["XMPPReconnectInterval"] ?? "300"); } }
 
+        public static string AuthRegistrationURL { get { return ConfigurationManager.AppSettings["AuthRegistrationURL"]; } }
+
         public static NameValueCollection GhostscriptPrinterDrivers { get { return ConfigurationManager.GetSection("ghostscriptPrinterDrivers") as NameValueCollection ?? new NameValueCollection(); } }
 
         public static PrinterConfigurationSection PrinterConfigurationSection { get { return ConfigurationManager.GetSection("printerConfiguration") as PrinterConfigurationSection; } }

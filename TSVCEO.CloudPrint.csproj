@@ -89,12 +89,15 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="InfoServer\AuthServiceRegistration.cs" />
     <Compile Include="InfoServer\Controllers\AuditronController.cs" />
+    <Compile Include="InfoServer\Controllers\LoginController.cs" />
     <Compile Include="InfoServer\Controllers\HomeController.cs" />
     <Compile Include="InfoServer\Controllers\JobDataController.cs" />
     <Compile Include="InfoServer\Controllers\RegisterController.cs" />
     <Compile Include="InfoServer\Controllers\ScriptsController.cs" />
     <Compile Include="InfoServer\Controllers\StatusController.cs" />
+    <Compile Include="InfoServer\Controllers\UserStatusController.cs" />
     <Compile Include="InfoServer\Controllers\XHtmlController.cs" />
     <Compile Include="InfoServer\Filters\HandleErrorFilter.cs" />
     <Compile Include="InfoServer\InfoServerExtensions.cs" />
