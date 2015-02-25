@@ -34,10 +34,10 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
                 jobswaiting = jobswaiting
             });
 
-            return new HttpResponseMessage()
-            {
-                Content = new StringContent(writer.ToString(), Encoding.UTF8, "application/json")
-            };
+            HttpResponseMessage response = new HttpResponseMessage();
+            response.Content = new StringContent(writer.ToString(), Encoding.UTF8, "application/json");
+            response.Headers.Add("Access-Control-Allow-Origin", "*");
+            return response;
         }
     }
 }
