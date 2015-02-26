@@ -11,6 +11,7 @@ using System.IO;
 
 namespace TSVCEO.CloudPrint.InfoServer.Controllers
 {
+    [AllowAnonymous]
     public class UserStatusController : ApiController
     {
         protected CloudPrintProxy PrintProxy
@@ -21,7 +22,6 @@ namespace TSVCEO.CloudPrint.InfoServer.Controllers
             }
         }
 
-        [AllowAnonymous]
         public HttpResponseMessage Get(string username)
         {
             bool isauthenticated = WindowsIdentityStore.HasWindowsIdentity(username);
