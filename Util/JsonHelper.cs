@@ -128,7 +128,7 @@ namespace TSVCEO.CloudPrint.Util
         
         private static void WriteJsonObject(JsonWriter writer, object obj)
         {
-            WriteJsonObject(writer, TypeDescriptor.GetProperties(obj).OfType<PropertyDescriptor>().ToDictionary(prop => prop.Name, prop => prop.GetValue(obj)));
+            WriteJsonGenericDictionary(writer, TypeDescriptor.GetProperties(obj).OfType<PropertyDescriptor>().ToDictionary(prop => prop.Name, prop => prop.GetValue(obj)));
         }
 
         private static void WriteJsonValue(JsonWriter writer, object value)
