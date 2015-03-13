@@ -29,33 +29,36 @@ namespace TSVCEO.CloudPrint.InfoServer
 
         protected void RegisterAuthService(object state)
         {
-            foreach (CloudPrinter printer in PrintProxy.Queues)
+            if (PrintProxy.IsRegistered)
             {
-                if (!PrinterRegistrationTimes.ContainsKey(printer.PrinterID) ||
-                    PrinterRegistrationTimes[printer.PrinterID] < DateTime.Now)
+                foreach (CloudPrinter printer in PrintProxy.Queues)
                 {
-                    HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(Config.AuthRegistrationURL);
-
-                    req.Proxy = null;
-
-                    if (Config.WebProxyHost != null)
+                    if (!PrinterRegistrationTimes.ContainsKey(printer.PrinterID) ||
+                        PrinterRegistrationTimes[printer.PrinterID] < DateTime.Now)
                     {
-                        req.Proxy = new WebProxy(Config.WebProxyHost, Config.WebProxyPort);
-                    }
+                        HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(Config.AuthRegistrationURL);
 
-                    try
-                    {
-                        byte[] responsedata = HTTPHelper.SendUrlEncodedPostData(req, new
+                        req.Proxy = null;
+
+                        if (Config.WebProxyHost != null)
                         {
-                            printerid = printer.PrinterID,
-                            authserver = "http://" + Config.UserAuthHost + ":" + Config.UserAuthHttpPort
-                        });
+                            req.Proxy = new WebProxy(Config.WebProxyHost, Config.WebProxyPort);
+                        }
 
-                        PrinterRegistrationTimes[printer.PrinterID] = DateTime.Now.AddHours(1);
-                    }
-                    catch (WebException)
-                    {
-                        PrinterRegistrationTimes[printer.PrinterID] = DateTime.Now.AddMinutes(1);
+                        try
+                        {
+                            byte[] responsedata = HTTPHelper.SendUrlEncodedPostData(req, new
+                            {
+                                printerid = printer.PrinterID,
+                                authserver = "http://" + Config.UserAuthHost + ":" + Config.UserAuthHttpPort
+                            });
+
+                            PrinterRegistrationTimes[printer.PrinterID] = DateTime.Now.AddHours(1);
+                        }
+                        catch (WebException)
+                        {
+                            PrinterRegistrationTimes[printer.PrinterID] = DateTime.Now.AddMinutes(1);
+                        }
                     }
                 }
             }
