@@ -40,6 +40,7 @@ namespace TSVCEO.CloudPrint
         public static string XMPPResourceName { get { return ConfigurationManager.AppSettings["XMPPResourceName"]; } }
         public static string XMPPHost { get { return ConfigurationManager.AppSettings["XMPPHost"] ?? "talk.google.com"; } }
         public static int XMPPPort { get { return Int32.Parse(ConfigurationManager.AppSettings["XMPPPort"] ?? "5222"); } }
+        public static bool XMPPUseProxy { get { return ConfigurationManager.AppSettings["XMPPUseProxy"] != "no"; } }
 
         public static int UserAuthHttpPort { get { return Int32.Parse(ConfigurationManager.AppSettings["UserAuthHttpPort"] ?? "12387"); } }
         public static string UserAuthHost { get { return ConfigurationManager.AppSettings["UserAuthHost"] ?? Environment.MachineName; } }

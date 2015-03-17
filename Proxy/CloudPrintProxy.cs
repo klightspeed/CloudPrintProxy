@@ -371,7 +371,7 @@ namespace TSVCEO.CloudPrint.Proxy
 
         private void RunXMPP()
         {
-            XMPP xmpp = new XMPP(Config.XMPP_JID, OAuthTicket.AccessToken, Config.XMPPResourceName, "X-OAUTH2", Config.WebProxyHost, Config.WebProxyPort, Config.XMPPHost, Config.XMPPPort);
+            XMPP xmpp = new XMPP(Config.XMPP_JID, OAuthTicket.AccessToken, Config.XMPPResourceName, "X-OAUTH2", Config.XMPPUseProxy ? Config.WebProxyHost : null, Config.XMPPUseProxy ? Config.WebProxyPort : 0, Config.XMPPHost, Config.XMPPPort);
             xmpp.Start((ex, x) => XMPP_Ended(ex, x));
             xmpp.Subscribe("cloudprint.google.com", ProcessPush);
             XMPP = xmpp;
