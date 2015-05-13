@@ -124,7 +124,10 @@ namespace TSVCEO.CloudPrint.Util
                 using (var memstream = new MemoryStream())
                 {
                     responsestream.CopyTo(memstream);
-                    return memstream.ToArray();
+                    byte[] responsedata = memstream.ToArray();
+                    string responsetext = Encoding.UTF8.GetString(responsedata);
+                    Logger.Log(LogLevel.Debug, "Response:\n{0}\n\n", responsetext);
+                    return responsedata;
                 }
             }
         }
@@ -137,10 +140,16 @@ namespace TSVCEO.CloudPrint.Util
 
         public static byte[] SendMultiPartPostData(HttpWebRequest request, dynamic postdata, out HttpWebResponse response)
         {
+            UTF8Encoding utf8 = new UTF8Encoding(false);
             var boundary = "--=NextPart=--_" + Guid.NewGuid().ToString();
             request.Method = "POST";
             request.ContentType = "multipart/form-data; charset=utf-8; boundary=" + boundary;
-            WriteMultiPartPostData(new StreamWriter(request.GetRequestStream(), Encoding.UTF8), postdata, boundary);
+            var stream = new MemoryStream();
+            WriteMultiPartPostData(new StreamWriter(stream, utf8), postdata, boundary);
+            var streamdata = stream.ToArray();
+            var streamtext = Encoding.UTF8.GetString(streamdata);
+            Logger.Log(LogLevel.Debug, "Request:\n{0}\n\n", streamtext);
+            request.GetRequestStream().Write(streamdata, 0, streamdata.Length);
             return GetResponseData(request, out response);
         }
 
@@ -159,8 +168,10 @@ namespace TSVCEO.CloudPrint.Util
             WriteUrlEncodedPostData(new StreamWriter(stream, utf8), postdata);
             var streamdata = stream.ToArray();
             var streamtext = Encoding.UTF8.GetString(streamdata);
+            Logger.Log(LogLevel.Debug, "Request:\n{0}\n\n", streamtext);
             request.GetRequestStream().Write(streamdata, 0, streamdata.Length);
-            return GetResponseData(request, out response);
+            byte[] responsedata = GetResponseData(request, out response);
+            return responsedata;
         }
 
         public static byte[] SendUrlEncodedPostData(HttpWebRequest request, dynamic postdata)
@@ -171,12 +182,14 @@ namespace TSVCEO.CloudPrint.Util
 
         public static byte[] SendJsonPostData(HttpWebRequest request, dynamic postdata, out HttpWebResponse response)
         {
+            UTF8Encoding utf8 = new UTF8Encoding(false);
             request.Method = "POST";
             request.ContentType = "application/json";
             var stream = new MemoryStream();
-            JsonHelper.WriteJson(new StreamWriter(stream, Encoding.UTF8), postdata);
+            JsonHelper.WriteJson(new StreamWriter(stream, utf8), postdata);
             var streamdata = stream.ToArray();
             var streamtext = Encoding.UTF8.GetString(streamdata);
+            Logger.Log(LogLevel.Debug, "Request:\n{0}\n\n", streamtext);
             request.GetRequestStream().Write(streamdata, 0, streamdata.Length);
             return GetResponseData(request, out response);
         }
