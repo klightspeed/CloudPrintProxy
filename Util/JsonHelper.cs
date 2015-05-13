@@ -29,7 +29,7 @@ namespace TSVCEO.CloudPrint.Util
                 }
             }
 
-            if (vals.All(v => v is IDictionary<string, object>))
+            if (vals.Count != 0 && vals.All(v => v is IDictionary<string, object>))
             {
                 if (vals.OfType<IDictionary<string, object>>().All(v => v.ContainsKey("Key") && v.ContainsKey("Value")))
                 {
