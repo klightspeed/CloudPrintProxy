@@ -57,6 +57,8 @@ namespace TSVCEO.CloudPrint
 
         public static string AuthRegistrationURL { get { return ConfigurationManager.AppSettings["AuthRegistrationURL"]; } }
 
+        public static int MaxJobAgeInDays { get { return Int32.Parse(ConfigurationManager.AppSettings["MaxJobAgeInDays"] ?? "14"); } }
+
         public static NameValueCollection GhostscriptPrinterDrivers { get { return ConfigurationManager.GetSection("ghostscriptPrinterDrivers") as NameValueCollection ?? new NameValueCollection(); } }
 
         public static PrinterConfigurationSection PrinterConfigurationSection { get { return ConfigurationManager.GetSection("printerConfiguration") as PrinterConfigurationSection; } }

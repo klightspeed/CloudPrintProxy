@@ -187,9 +187,14 @@ namespace TSVCEO.CloudPrint.Printing
 
         private void ProcessPrintJob(CloudPrintJob job)
         {
-            if (!WindowsIdentityStore.IsAcceptedDomain(job.Domain))
+            if (DateTime.Now > job.CreateTime.AddDays(-Config.MaxJobAgeInDays))
             {
-                Logger.Log(LogLevel.Debug, "Job {0} deferred because {1}@{2} is not in an accepted domain", job.JobID, job.Username, job.Domain);
+                Logger.Log(LogLevel.Info, "Job {0} from {1}@{2} expired", job.JobID, job.Username, job.Domain);
+                job.SetError("Expired", "Job expired in queue");
+            }
+            else if (!WindowsIdentityStore.IsAcceptedDomain(job.Domain))
+            {
+                Logger.Log(LogLevel.Info, "Job {0} deferred because {1}@{2} is not in an accepted domain", job.JobID, job.Username, job.Domain);
             }
             else
             {
@@ -201,7 +206,7 @@ namespace TSVCEO.CloudPrint.Printing
                         {
                             Logger.Log(LogLevel.Debug, "Job {0} deferred because {1} has not logged in", job.JobID, job.Username);
 
-                            if (job.CreateTime > DateTime.Now.AddDays(-3) && !job.DeliveryAttempted)
+                            if (!job.DeliveryAttempted)
                             {
                                 NotifyUserToLogin(job);
                             }
