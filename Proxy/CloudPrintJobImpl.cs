@@ -157,9 +157,10 @@ namespace TSVCEO.CloudPrint.Proxy
 
             if (status == CloudPrintJobStatus.DONE)
             {
-#if !DEBUG
-                File.Delete(_PrintDataFileName);
-#endif
+                if (!Config.KeepPrintFile)
+                {
+                    File.Delete(_PrintDataFileName);
+                }
             }
         }
 

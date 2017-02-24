@@ -59,6 +59,8 @@ namespace TSVCEO.CloudPrint
 
         public static int MaxJobAgeInDays { get { return Int32.Parse(ConfigurationManager.AppSettings["MaxJobAgeInDays"] ?? "14"); } }
 
+        public static bool KeepPrintFile { get { return ConfigurationManager.AppSettings["KeepPrintFile"] == "yes"; } }
+
         public static NameValueCollection GhostscriptPrinterDrivers { get { return ConfigurationManager.GetSection("ghostscriptPrinterDrivers") as NameValueCollection ?? new NameValueCollection(); } }
 
         public static PrinterConfigurationSection PrinterConfigurationSection { get { return ConfigurationManager.GetSection("printerConfiguration") as PrinterConfigurationSection; } }
