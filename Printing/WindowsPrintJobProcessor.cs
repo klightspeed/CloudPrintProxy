@@ -187,9 +187,9 @@ namespace TSVCEO.CloudPrint.Printing
 
         private void ProcessPrintJob(CloudPrintJob job)
         {
-            if (DateTime.Now > job.CreateTime.AddDays(-Config.MaxJobAgeInDays))
+            if (DateTime.Now > job.CreateTime.AddDays(Config.MaxJobAgeInDays))
             {
-                Logger.Log(LogLevel.Info, "Job {0} from {1}@{2} expired", job.JobID, job.Username, job.Domain);
+                Logger.Log(LogLevel.Info, "Job {0} from {1}@{2} expired (Job created {3}, maxage: {4} days)", job.JobID, job.Username, job.Domain, job.CreateTime, Config.MaxJobAgeInDays);
                 job.SetError("Expired", "Job expired in queue");
             }
             else if (!WindowsIdentityStore.IsAcceptedDomain(job.Domain))
